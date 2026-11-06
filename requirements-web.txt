@@ -1,0 +1,4 @@
+# Additional dependencies for the localhost web backend.
+# The existing K-Means and Gemini advisor scripts remain unchanged.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1

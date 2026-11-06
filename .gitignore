@@ -1,0 +1,31 @@
+
+# Python virtual environments
+.venv/
+.venv_test/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# React / Node.js
+node_modules/
+dist/
+.vite/
+
+# API keys and environment variables
+.env
+.env.*
+!.env.example
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Extracted website package (duplicate folder)
+GreenSegment_AI_Web_Localhost/

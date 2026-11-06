@@ -1,0 +1,357 @@
+{
+  "schema_version": "1.0",
+  "project": "GreenSegment AI",
+  "catalog_status": "starter_reference_catalog",
+  "last_compiled_date": "2026-11-03",
+  "purpose_vi": "Danh mục giải pháp công nghệ xanh tham chiếu để Gemini đối chiếu với cơ cấu phát thải từng đô thị, không phải khuyến nghị triển khai đã được thẩm định.",
+  "data_scope_vi": "EDGAR Cities, khí nhà kính 2024 theo 7 lĩnh vực; việc chia ngành không mô tả chi tiết công nghệ, nhiên liệu hay cơ sở phát thải.",
+  "sector_definitions": {
+    "Agriculture": "Đất nông nghiệp, chăn nuôi, phân và phát thải N₂O/CH₄ liên quan theo định nghĩa EDGAR.",
+    "Energy": "Phát điện và sản xuất nhiệt (Power Industry) theo EDGAR, không đồng nhất với toàn bộ tiêu thụ năng lượng của đô thị.",
+    "Industry": "Đốt nhiên liệu sản xuất, phát thải quá trình công nghiệp và các nguồn công nghiệp được EDGAR tính trong ngành này.",
+    "International": "Hàng không và hàng hải quốc tế theo EDGAR, cần xác định tiểu ngành trước khi chọn công nghệ.",
+    "Residential": "Đốt nhiên liệu tại nguồn cố định phi công nghiệp quy mô nhỏ, không đồng nghĩa toàn bộ vòng đời phát thải tòa nhà.",
+    "Transport": "Các hoạt động đốt nhiên liệu di động được EDGAR xếp vào giao thông, không chỉ giao thông đường bộ.",
+    "Waste": "Chất thải rắn và xử lý nước thải theo EDGAR."
+  },
+  "advisor_rules_vi": [
+    "Không coi ngành có tỷ trọng cao là bằng chứng chắc chắn có nhu cầu mua hay khả năng triển khai giải pháp.",
+    "Cần sử dụng cả tỷ trọng phát thải và lượng phát thải tuyệt đối của đô thị; không gán mức độ ưu tiên thương mại chỉ từ chúng.",
+    "Trước khi gợi ý giải pháp cụ thể, ghi rõ điều kiện áp dụng và các dữ liệu địa phương còn thiếu.",
+    "Chỉ dẫn nguồn trong danh mục, không tự bịa công bố, đường dẫn hay hiệu quả giảm phát thải.",
+    "Nếu dữ liệu chưa đủ, chỉ mô tả hướng giải pháp đáng nghiên cứu thay vì khẳng định khả thi.",
+    "Không lẫn lộn Energy với Residential/Transport; không lẫn International với Transport nội địa."
+  ],
+  "source_sector_definitions": [
+    {
+      "organization": "European Commission JRC",
+      "title": "EDGAR Cities – Sector definition",
+      "url": "https://edgar.jrc.ec.europa.eu/edgar_cities"
+    }
+  ],
+  "solutions": [
+    {
+      "solution_id": "AGR_001",
+      "edgar_sector": "Agriculture",
+      "name_en": "Improved livestock feed and manure management",
+      "name_vi": "Cải thiện thức ăn và quản lý chất thải chăn nuôi",
+      "description_vi": "Cải thiện khẩu phần, sức khỏe vật nuôi và thu gom/quản lý phân để giảm phát thải khí mê-tan và các khí liên quan.",
+      "relevance_rationale_vi": "Có liên hệ với phát thải chăn nuôi trong lĩnh vực nông nghiệp EDGAR.",
+      "local_data_needed": [
+        "Tỷ trọng phát thải từ chăn nuôi so với trồng trọt",
+        "Quy mô, loại hình chăn nuôi",
+        "Điều kiện vận hành và chi phí của trang trại"
+      ],
+      "limitations_vi": "Không suy ra đô thị có ngành chăn nuôi lớn chỉ từ tổng GHG Agriculture; hiệu quả phụ thuộc loài vật nuôi và kỹ thuật.",
+      "evidence": [
+        {
+          "organization": "FAO",
+          "title": "Livestock and enteric methane – Best practices",
+          "url": "https://www.fao.org/in-action/enteric-methane/background/best-practices/"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "AGR_002",
+      "edgar_sector": "Agriculture",
+      "name_en": "Precision nitrogen fertilizer management",
+      "name_vi": "Quản lý phân bón đạm chính xác",
+      "description_vi": "Tối ưu lượng, thời điểm và phương thức bón đạm để giảm phát thải N₂O từ đất nông nghiệp.",
+      "relevance_rationale_vi": "Phù hợp để nghiên cứu khi phát thải nông nghiệp có thành phần từ đất canh tác.",
+      "local_data_needed": [
+        "Diện tích và loại cây trồng",
+        "Lượng phân bón và loại đất",
+        "Dữ liệu N₂O và điều kiện khí hậu"
+      ],
+      "limitations_vi": "Không thể suy ra nguyên nhân phát thải trong Agriculture nếu không có số liệu chi tiết về cây trồng và phân bón.",
+      "evidence": [
+        {
+          "organization": "IPCC",
+          "title": "AR6 WGIII – Chapter 7: Agriculture, Forestry and Other Land Uses",
+          "url": "https://www.ipcc.ch/report/ar6/wg3/chapter/chapter-7/"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "ENE_001",
+      "edgar_sector": "Energy",
+      "name_en": "Low-emission electricity generation",
+      "name_vi": "Phát điện phát thải thấp (mặt trời, gió)",
+      "description_vi": "Nghiên cứu chuyển dịch nguồn điện từ công nghệ phát thải cao sang các nguồn phát điện phát thải thấp.",
+      "relevance_rationale_vi": "Energy trong EDGAR liên quan đến phát điện và sản xuất nhiệt; chuyển dịch nguồn phát có thể liên quan.",
+      "local_data_needed": [
+        "Cơ cấu nhiên liệu của nhà máy điện",
+        "Tiềm năng nguồn tái tạo và khả năng kết nối lưới",
+        "Quy hoạch và chính sách điện"
+      ],
+      "limitations_vi": "Tỷ trọng Energy cao không chứng minh có thể triển khai dự án điện tái tạo tại đô thị; phải xét hệ thống điện và vị trí.",
+      "evidence": [
+        {
+          "organization": "IEA",
+          "title": "Renewables 2025 – Renewable electricity",
+          "url": "https://www.iea.org/reports/renewables-2025/renewable-electricity"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "ENE_002",
+      "edgar_sector": "Energy",
+      "name_en": "Power grid flexibility and energy storage",
+      "name_vi": "Lưu trữ năng lượng và tăng tính linh hoạt lưới điện",
+      "description_vi": "Kết hợp lưu trữ, điều khiển và quản lý phụ tải để hỗ trợ tích hợp nguồn điện tái tạo biến thiên.",
+      "relevance_rationale_vi": "Có thể là giải pháp hỗ trợ khi đang xem xét khử carbon phát điện và giảm phát thải của hệ thống điện.",
+      "local_data_needed": [
+        "Dữ liệu phụ tải theo giờ",
+        "Nguồn và tỷ lệ điện tái tạo",
+        "Cấu trúc lưới, phụ tải đỉnh, quy định kỹ thuật"
+      ],
+      "limitations_vi": "Không phải giải pháp trực tiếp cho mọi đô thị có phát thải Energy; không thể đánh giá mức giảm phát thải từ dữ liệu ngành tổng hợp.",
+      "evidence": [
+        {
+          "organization": "IEA",
+          "title": "Renewables 2025 – Renewable electricity",
+          "url": "https://www.iea.org/reports/renewables-2025/renewable-electricity"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "IND_001",
+      "edgar_sector": "Industry",
+      "name_en": "Industrial waste heat recovery",
+      "name_vi": "Thu hồi và tái sử dụng nhiệt thải công nghiệp",
+      "description_vi": "Thu hồi nhiệt dư trong quá trình sản xuất để giảm nhiên liệu cần thiết cho quá trình gia nhiệt.",
+      "relevance_rationale_vi": "Có liên hệ với quá trình tiêu thụ nhiên liệu công nghiệp tạo ra phát thải trong EDGAR Industry.",
+      "local_data_needed": [
+        "Ngành sản xuất và nhiệt độ dòng nhiệt thải",
+        "Cường độ vận hành nhà máy",
+        "Nhu cầu nhiệt có thể sử dụng lại"
+      ],
+      "limitations_vi": "Không thể biết có nguồn nhiệt thải thu hồi được chỉ từ tỷ trọng Industry; cần khảo sát nhà máy.",
+      "evidence": [
+        {
+          "organization": "IEA",
+          "title": "Renewables for Industry – Executive summary",
+          "url": "https://www.iea.org/reports/renewables-for-industry/executive-summary"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "IND_002",
+      "edgar_sector": "Industry",
+      "name_en": "Electrification of industrial heat",
+      "name_vi": "Điện hóa nhiệt công nghiệp nhiệt độ thấp và trung bình",
+      "description_vi": "Xem xét bơm nhiệt công nghiệp hoặc nồi hơi điện thay thế nhiệt từ nhiên liệu hóa thạch ở quy trình phù hợp.",
+      "relevance_rationale_vi": "Có liên hệ với các quá trình đốt nhiên liệu trong ngành công nghiệp.",
+      "local_data_needed": [
+        "Nhiệt độ và công suất nhiệt cần thiết",
+        "Giá điện và nhiên liệu",
+        "Hệ số phát thải điện và khả năng cấp điện"
+      ],
+      "limitations_vi": "Không áp dụng mặc định cho công nghiệp nhiệt độ rất cao; lợi ích carbon phụ thuộc nguồn điện.",
+      "evidence": [
+        {
+          "organization": "IEA",
+          "title": "Renewables for Industry – Executive summary",
+          "url": "https://www.iea.org/reports/renewables-for-industry/executive-summary"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "INT_001",
+      "edgar_sector": "International",
+      "name_en": "Shore-side electricity for ships",
+      "name_vi": "Cấp điện bờ cho tàu tại cảng",
+      "description_vi": "Cho phép tàu sử dụng điện từ bờ thay cho chạy máy phụ khi neo đậu ở cảng được trang bị phù hợp.",
+      "relevance_rationale_vi": "Có liên hệ với hoạt động hàng hải quốc tế trong ngành International của EDGAR.",
+      "local_data_needed": [
+        "Có cảng biển quốc tế hay không",
+        "Lưu lượng, loại tàu và thời gian neo",
+        "Hạ tầng cấp điện bờ và cường độ carbon điện"
+      ],
+      "limitations_vi": "Không thể áp dụng cho đô thị không có hoạt động cảng; dữ liệu International tổng hợp cả hàng không và hàng hải.",
+      "evidence": [
+        {
+          "organization": "IMO",
+          "title": "2023 IMO Strategy on Reduction of GHG Emissions from Ships",
+          "url": "https://www.imo.org/en/ourwork/environment/pages/2023-imo-strategy-on-reduction-of-ghg-emissions-from-ships.aspx"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "INT_002",
+      "edgar_sector": "International",
+      "name_en": "Sustainable aviation fuel pathways",
+      "name_vi": "Nhiên liệu hàng không bền vững (SAF)",
+      "description_vi": "Nghiên cứu khả năng áp dụng nhiên liệu hàng không đủ điều kiện bền vững cho hoạt động bay quốc tế.",
+      "relevance_rationale_vi": "Có liên hệ với phát thải hàng không quốc tế, là một phần của ngành International EDGAR.",
+      "local_data_needed": [
+        "Có sân bay quốc tế và lưu lượng bay hay không",
+        "Nguồn cung và tiêu chuẩn SAF",
+        "Đánh giá phát thải vòng đời nhiên liệu"
+      ],
+      "limitations_vi": "Không suy ra nhu cầu SAF hoặc tiềm năng thương mại chỉ từ chỉ số International; cần tách hàng không khỏi hàng hải.",
+      "evidence": [
+        {
+          "organization": "ICAO",
+          "title": "Carbon Offsetting and Reduction Scheme for International Aviation (CORSIA)",
+          "url": "https://www.icao.int/CORSIA"
+        },
+        {
+          "organization": "IEA",
+          "title": "Delivering Sustainable Fuels",
+          "url": "https://www.iea.org/reports/delivering-sustainable-fuels"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "RES_001",
+      "edgar_sector": "Residential",
+      "name_en": "Building insulation and efficient heating",
+      "name_vi": "Cải thiện cách nhiệt và hệ thống sưởi hiệu suất cao",
+      "description_vi": "Nâng cấp vỏ công trình và các thiết bị gia nhiệt để giảm nhu cầu đốt nhiên liệu tại chỗ.",
+      "relevance_rationale_vi": "Phù hợp để nghiên cứu khi phát thải Residential có liên quan đến nhiên liệu dùng trong tòa nhà.",
+      "local_data_needed": [
+        "Nhiên liệu sử dụng trong nhà",
+        "Nhu cầu sưởi theo khí hậu",
+        "Loại hình và tình trạng công trình"
+      ],
+      "limitations_vi": "EDGAR Residential không đồng nghĩa toàn bộ phát thải gián tiếp do điện tiêu thụ trong tòa nhà; cần xác định nguồn trực tiếp.",
+      "evidence": [
+        {
+          "organization": "IEA",
+          "title": "Energy Efficiency 2025 – Buildings",
+          "url": "https://www.iea.org/reports/energy-efficiency-2025/buildings"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "RES_002",
+      "edgar_sector": "Residential",
+      "name_en": "Clean and efficient cooking",
+      "name_vi": "Công nghệ nấu nướng sạch và hiệu quả",
+      "description_vi": "Nghiên cứu thay thế thiết bị nấu dùng nhiên liệu gây phát thải bằng các giải pháp ít phát thải hơn khi điều kiện phù hợp.",
+      "relevance_rationale_vi": "Có thể liên quan đến phát thải đốt nhiên liệu ở khu dân cư và công trình quy mô nhỏ.",
+      "local_data_needed": [
+        "Loại bếp và nhiên liệu đang dùng",
+        "Khả năng cung cấp điện/nhiên liệu sạch",
+        "Chi phí sử dụng và điều kiện hộ dân"
+      ],
+      "limitations_vi": "Không mặc định mọi đô thị có phát thải Residential cao đều dùng bếp truyền thống.",
+      "evidence": [
+        {
+          "organization": "IEA",
+          "title": "Energy Efficiency 2025 – Buildings",
+          "url": "https://www.iea.org/reports/energy-efficiency-2025/buildings"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "TRN_001",
+      "edgar_sector": "Transport",
+      "name_en": "Electric public bus fleets",
+      "name_vi": "Điện hóa đội xe buýt đô thị",
+      "description_vi": "Chuyển đổi xe buýt nhiên liệu hóa thạch sang xe buýt điện với hạ tầng sạc phù hợp.",
+      "relevance_rationale_vi": "Có liên hệ với khí thải đốt nhiên liệu của giao thông đường bộ.",
+      "local_data_needed": [
+        "Tỷ lệ phát thải đường bộ trong Transport",
+        "Đội xe buýt hiện hữu và lộ trình",
+        "Hạ tầng sạc, nguồn điện, chi phí vòng đời"
+      ],
+      "limitations_vi": "Không thể xác định đội xe buýt là nguồn chính từ chỉ số Transport tổng hợp (có thể gồm cả các phương thức khác).",
+      "evidence": [
+        {
+          "organization": "IEA",
+          "title": "Global EV Outlook 2026 – Trends in other EV modes",
+          "url": "https://www.iea.org/reports/global-ev-outlook-2026/trends-in-other-ev-modes"
+        },
+        {
+          "organization": "IPCC",
+          "title": "AR6 WGIII – Summary for Policymakers",
+          "url": "https://www.ipcc.ch/report/ar6/wg3/chapter/summary-for-policymakers/"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "TRN_002",
+      "edgar_sector": "Transport",
+      "name_en": "Public transit and active mobility",
+      "name_vi": "Giao thông công cộng và di chuyển chủ động",
+      "description_vi": "Tăng lựa chọn xe buýt/đường sắt đô thị, đi bộ và xe đạp để thay thế một phần chuyến đi bằng xe cá nhân.",
+      "relevance_rationale_vi": "Có thể giảm nhu cầu sử dụng phương tiện phát thải cao trong hệ thống giao thông đô thị.",
+      "local_data_needed": [
+        "Phân chia phương thức đi lại",
+        "Mật độ và quy hoạch giao thông",
+        "Chất lượng dịch vụ và nhu cầu vận chuyển"
+      ],
+      "limitations_vi": "Giải pháp phụ thuộc thiết kế đô thị và hành vi người dùng; không thể lượng hóa tác động chỉ từ tỷ trọng GHG.",
+      "evidence": [
+        {
+          "organization": "IPCC",
+          "title": "AR6 WGIII – Summary for Policymakers",
+          "url": "https://www.ipcc.ch/report/ar6/wg3/chapter/summary-for-policymakers/"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "WAS_001",
+      "edgar_sector": "Waste",
+      "name_en": "Landfill gas capture and utilisation",
+      "name_vi": "Thu gom và xử lý khí bãi chôn lấp",
+      "description_vi": "Thu hồi khí bãi chôn lấp để đốt an toàn hoặc sử dụng năng lượng khi đủ điều kiện.",
+      "relevance_rationale_vi": "Có liên hệ với khí mê-tan sinh ra từ phân hủy chất thải tại bãi chôn lấp.",
+      "local_data_needed": [
+        "Khối lượng rác hữu cơ và loại bãi chôn lấp",
+        "Ước tính khí bãi rác",
+        "Hiện trạng thu gom khí và yêu cầu an toàn"
+      ],
+      "limitations_vi": "Không áp dụng mặc định nếu phần lớn phát thải Waste đến từ nước thải thay vì bãi rác.",
+      "evidence": [
+        {
+          "organization": "UNFCCC",
+          "title": "Sustainable waste management",
+          "url": "https://unfccc.int/technology/sustainable-waste-management"
+        },
+        {
+          "organization": "UNEP",
+          "title": "GHG & SLCP mitigation, in particular methane",
+          "url": "https://www.unep.org/en/what-we-do/food-systems/nature-positive-resilient-agriculture/ghg-slcp-mitigation-particular"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    },
+    {
+      "solution_id": "WAS_002",
+      "edgar_sector": "Waste",
+      "name_en": "Wastewater methane capture and resource recovery",
+      "name_vi": "Thu hồi mê-tan và tài nguyên từ nước thải",
+      "description_vi": "Cải thiện xử lý nước thải, thu khí sinh học và tận dụng năng lượng/tài nguyên khi có cơ sở kỹ thuật.",
+      "relevance_rationale_vi": "Có liên hệ với phát thải từ quá trình xử lý nước thải trong ngành Waste EDGAR.",
+      "local_data_needed": [
+        "Công suất và công nghệ nhà máy xử lý nước thải",
+        "Nồng độ chất hữu cơ và khí sinh học",
+        "Hạ tầng thu hồi, an toàn và đầu ra tài nguyên"
+      ],
+      "limitations_vi": "Không thể suy luận cần công nghệ cụ thể nếu không biết tỷ lệ phát thải nước thải trong Waste.",
+      "evidence": [
+        {
+          "organization": "UNEP",
+          "title": "Facts about wastewater and nutrient management",
+          "url": "https://www.unep.org/en/facts-about-wastewater-and-nutrient-management"
+        }
+      ],
+      "recommendation_status": "research_candidate_only"
+    }
+  ]
+}

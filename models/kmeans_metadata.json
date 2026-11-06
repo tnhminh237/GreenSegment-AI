@@ -1,0 +1,18 @@
+{
+  "algorithm": "KMeans",
+  "k": 3,
+  "feature_columns_ordered": [
+    "share_agriculture_2024",
+    "share_energy_2024",
+    "share_industry_2024",
+    "share_international_2024",
+    "share_residential_2024",
+    "share_transport_2024",
+    "share_waste_2024"
+  ],
+  "training_rows": 11422,
+  "random_state": 42,
+  "n_init": 20,
+  "feature_description": "Raw GHG sector shares (0-1); no scaling/PCA",
+  "important_note": "Cluster IDs are arbitrary; name them after reviewing cluster profiles."
+}

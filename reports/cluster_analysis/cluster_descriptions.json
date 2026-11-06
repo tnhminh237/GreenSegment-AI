@@ -1,0 +1,81 @@
+{
+  "project": "GreenSegment AI",
+  "data_year": 2024,
+  "analysis": "Profiles of the already-fitted final K-Means clusters",
+  "emission_units": "Unit from EDGAR source; verify metadata before naming units",
+  "sector_mean_definition": "Mean across city-level GHG sector shares, in percent",
+  "notes": [
+    "Cluster numbers are arbitrary labels, not rankings.",
+    "Sector relevance alone does not establish local technology demand or B2B potential.",
+    "Average sector shares do not equal the sector shares of total summed emissions.",
+    "The Energy/International sector definitions must be checked against EDGAR metadata."
+  ],
+  "clusters": [
+    {
+      "cluster_id": 0,
+      "cluster_name": "Đô thị thiên về phát thải dân cư và giao thông",
+      "description": "Cụm 0 gồm 7,480 đô thị (65.5% tổng số). Tỷ trọng GHG trung bình nổi bật: Dân cư 37.06% và Giao thông 34.87%. Đây là đặc điểm cơ cấu phát thải, không phải bằng chứng về nhu cầu mua giải pháp.",
+      "city_count": 7480,
+      "city_percentage": 65.4877,
+      "median_ghg_total_2024_source_units": 74403.05530205701,
+      "sector_share_mean_pct": {
+        "agriculture": 11.4658,
+        "energy": 1.0925,
+        "industry": 11.6576,
+        "international": 0.5511,
+        "residential": 37.0629,
+        "transport": 34.8654,
+        "waste": 3.3046
+      },
+      "top_3_sectors": [
+        "residential",
+        "transport",
+        "industry"
+      ]
+    },
+    {
+      "cluster_id": 1,
+      "cluster_name": "Đô thị thiên về phát thải công nghiệp",
+      "description": "Cụm 1 gồm 3,177 đô thị (27.8% tổng số). Tỷ trọng GHG trung bình nổi bật: Công nghiệp 56.41% và Giao thông 15.81%. Đây là đặc điểm cơ cấu phát thải, không phải bằng chứng về nhu cầu mua giải pháp.",
+      "city_count": 3177,
+      "city_percentage": 27.8147,
+      "median_ghg_total_2024_source_units": 351284.079308,
+      "sector_share_mean_pct": {
+        "agriculture": 2.9247,
+        "energy": 2.4148,
+        "industry": 56.4058,
+        "international": 0.3704,
+        "residential": 15.0996,
+        "transport": 15.8057,
+        "waste": 6.979
+      },
+      "top_3_sectors": [
+        "industry",
+        "transport",
+        "residential"
+      ]
+    },
+    {
+      "cluster_id": 2,
+      "cluster_name": "Đô thị thiên về phát thải năng lượng",
+      "description": "Cụm 2 gồm 765 đô thị (6.7% tổng số). Tỷ trọng GHG trung bình nổi bật: Năng lượng 62.98% và Công nghiệp 15.18%. Đây là đặc điểm cơ cấu phát thải, không phải bằng chứng về nhu cầu mua giải pháp.",
+      "city_count": 765,
+      "city_percentage": 6.6976,
+      "median_ghg_total_2024_source_units": 2084310.9596290002,
+      "sector_share_mean_pct": {
+        "agriculture": 1.3883,
+        "energy": 62.9774,
+        "industry": 15.1798,
+        "international": 0.4299,
+        "residential": 8.8043,
+        "transport": 8.5743,
+        "waste": 2.6459
+      },
+      "top_3_sectors": [
+        "energy",
+        "industry",
+        "residential"
+      ]
+    }
+  ]
+}
