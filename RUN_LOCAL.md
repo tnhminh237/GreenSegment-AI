@@ -1,5 +1,23 @@
 # GreenSegment AI — Website localhost (React + FastAPI)
 
+## Cluster Explorer — Giai đoạn 1
+
+Trong sidebar, chọn **Cluster Explorer**, rồi chọn cụm 0, 1 hoặc 2. Trang hiển thị thống kê toàn bộ cụm, độc lập với bộ lọc sidebar: số lượng/tỷ lệ đô thị, tâm K-Means, trung bình/trung vị tỷ trọng, độ lệch chuẩn tổng thể, IQR và phân bố khoảng cách Euclid. So sánh cơ cấu giữa cả ba cụm dùng trung bình theo đô thị, không gia quyền theo lượng phát thải.
+
+Tâm đọc từ `reports/cluster_analysis/cluster_centroids_2024.csv`; kiểm tra với metadata và mã huấn luyện cho thấy mô hình dùng tỷ trọng gốc 0–1, không scaling/PCA. Backend kiểm tra lại khoảng cách của đủ 11.422 đô thị, không huấn luyện lại. Tâm có thể lệch nhẹ với trung bình tính lại theo nhãn cuối cùng. Độ lệch chuẩn/IQR tỷ trọng có đơn vị điểm phần trăm; khoảng cách không có đơn vị. Phân vị nội suy tuyến tính, độ lệch chuẩn dùng `ddof=0`.
+
+API mới:
+
+- `GET /api/cluster-explorer`: thống kê Python của cả ba cụm.
+- `GET /api/cluster-explorer/{cluster_id}/preview`: dữ liệu đầu vào Gemini, không gọi API ngoài.
+- `POST /api/cluster-explorer/{cluster_id}/interpret`: diễn giải bằng Gemini, JSON gồm `summary`, `comparisons`, `dispersion_and_representativeness`, `research_questions`, `limitations`.
+
+Nút **Phân tích bằng Gemini** gọi API thật khi backend có `GEMINI_API_KEY` (cách đặt key ở mục 5). Báo cáo tập trung diễn giải cụm, không yêu cầu đề xuất công nghệ xanh. API key chỉ ở backend. Phản hồi Gemini được kiểm tra cấu trúc; nội dung AI vẫn cần đối chiếu thống kê. Báo cáo được giữ trong bộ nhớ trang theo từng cụm; chuyển cụm sẽ bỏ qua phản hồi cũ đang chờ, nhưng không đảm bảo hủy yêu cầu đã gửi tới nhà cung cấp.
+
+Chạy kiểm thử tại thư mục gốc: `python -m unittest discover -s tests -v` (cần FastAPI và `httpx`), sau đó chạy `npm run build` trong `web`. Kiểm thử dùng mock cho Gemini, không gọi API thật. Không cần cài Vnstock để sử dụng tính năng này.
+
+Backend cache thống kê trong bộ nhớ; nếu thay bộ dữ liệu, cần khởi động lại backend. Dữ liệu và mô hình hiện có được giữ nguyên.
+
 ## 1. Giải nén đúng chỗ
 
 Giải nén **nội dung ZIP** trực tiếp vào thư mục hiện tại:

@@ -274,7 +274,8 @@ def prepare_context(args: argparse.Namespace) -> tuple[dict, list[dict]]:
     return context, shortlist
 
 
-def call_gemini(context: dict, model: str, retries: int = 2) -> dict:
+def call_gemini(context: dict, model: str, retries: int = 2, *,
+                system_rules: str = SYSTEM_RULES, response_schema: dict = RESPONSE_SCHEMA) -> dict:
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         raise RuntimeError("Chưa đặt GEMINI_API_KEY. Dùng --dry-run để kiểm tra dữ liệu.")
@@ -284,12 +285,12 @@ def call_gemini(context: dict, model: str, retries: int = 2) -> dict:
         "https://generativelanguage.googleapis.com/v1beta/models/"
         f"{model}:generateContent"
     )
-    prompt = SYSTEM_RULES + "\nDU_LIEU_JSON:\n" + json.dumps(context, ensure_ascii=False)
+    prompt = system_rules + "\nDU_LIEU_JSON:\n" + json.dumps(context, ensure_ascii=False)
     payload = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {
             "responseMimeType": "application/json",
-            "responseJsonSchema": RESPONSE_SCHEMA,
+            "responseJsonSchema": response_schema,
         },
     }
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")

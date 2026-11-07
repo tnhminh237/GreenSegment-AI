@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import csv
 import json
+import math
+import statistics
 from collections import Counter
 from functools import lru_cache
 from pathlib import Path
@@ -191,3 +193,91 @@ def status() -> dict[str, Any]:
              "catalog": CATALOG_PATH, "advisor_script": ROOT / "src" / "gemini_advisor.py"}
     return {"ok": all(path.is_file() for path in files.values()),
             "files": {name: path.is_file() for name, path in files.items()}}
+
+
+def _distribution(values: list[float]) -> dict[str, float]:
+    """Population dispersion; linear quantiles at (n-1)*p, like pandas default."""
+    ordered = sorted(values)
+
+    def quantile(p: float) -> float:
+        position = (len(ordered) - 1) * p
+        lower = math.floor(position)
+        upper = math.ceil(position)
+        return ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
+
+    q1, q3 = quantile(.25), quantile(.75)
+    return {"mean": statistics.fmean(values), "median": statistics.median(values),
+            "std": statistics.pstdev(values), "min": ordered[0], "max": ordered[-1],
+            "q1": q1, "q3": q3, "iqr": q3 - q1, "p90": quantile(.9), "p95": quantile(.95)}
+
+
+@lru_cache(maxsize=1)
+def cluster_explorer() -> dict[str, Any]:
+    """Read frozen training artifacts, validate geometry, then describe all cities."""
+    columns = [f"share_{s}_2024" for s in SECTORS]
+    metadata = _read_json(ROOT / "models" / "kmeans_metadata.json")
+    if (metadata.get("algorithm") != "KMeans" or metadata.get("k") != 3
+            or metadata.get("feature_columns_ordered") != columns
+            or metadata.get("feature_description") != "Raw GHG sector shares (0-1); no scaling/PCA"):
+        raise ValueError("Tiền xử lý mô hình không phù hợp với phép tính tỷ trọng trực tiếp.")
+    rows = _read_csv(CITY_PATH)
+    if len(rows) != 11422 or metadata.get("training_rows") != len(rows):
+        raise ValueError("Số đô thị không khớp 11.422 đô thị của mô hình.")
+    if len({r["city_id"] for r in rows}) != len(rows) or any(not r["city_id"] for r in rows):
+        raise ValueError("city_id thiếu hoặc trùng lặp.")
+    centers = {int(r["cluster_id"]): r for r in _read_csv(
+        ROOT / "reports" / "cluster_analysis" / "cluster_centroids_2024.csv")}
+    groups = {i: [] for i in range(3)}
+    if set(centers) != set(groups):
+        raise ValueError("Tâm cụm phải có đủ mã 0, 1, 2.")
+    max_distance_error = 0.0
+    for row in rows:
+        cid = int(row["cluster_id"])
+        if cid not in groups:
+            raise ValueError("Mã cụm không hợp lệ.")
+        x = [float(row[c]) for c in columns]
+        center = [float(centers[cid][c]) for c in columns]
+        if (not all(math.isfinite(v) and -1e-10 <= v <= 1 + 1e-10 for v in x + center)
+                or not math.isclose(sum(x), 1, abs_tol=1e-6)
+                or not math.isclose(sum(center), 1, abs_tol=1e-6)):
+            raise ValueError("Tỷ trọng hoặc tâm cụm không hợp lệ.")
+        distance = math.dist(x, center)
+        saved = float(row["distance_to_centroid"])
+        if not math.isfinite(saved) or not math.isclose(distance, saved, abs_tol=1e-8):
+            raise ValueError("Khoảng cách lưu sẵn không khớp tâm cụm trong không gian tỷ trọng.")
+        max_distance_error = max(max_distance_error, abs(distance - saved))
+        groups[cid].append((x, distance))
+    profiles = {c["cluster_id"]: c for c in all_clusters()}
+    clusters = []
+    for cid, items in groups.items():
+        if not items or len(items) != int(centers[cid]["city_count"]):
+            raise ValueError("Quy mô cụm không khớp báo cáo tâm cụm.")
+        sector_stats = {s: _distribution([x[i] * 100 for x, _ in items])
+                        for i, s in enumerate(SECTORS)}
+        centroid = {s: float(centers[cid][columns[i]]) * 100 for i, s in enumerate(SECTORS)}
+        clusters.append({"cluster_id": cid, "cluster_name": profiles[cid]["cluster_name"],
+                         "short_name": profiles[cid]["short_name"], "color": CLUSTER_COLORS[cid],
+                         "city_count": len(items), "city_percentage": len(items) / len(rows) * 100,
+                         "centroid_percent": centroid, "sector_statistics_percent": sector_stats,
+                         "mean_sector_shares_percent": {s: v["mean"] for s, v in sector_stats.items()},
+                         "centroid_mean_max_gap_pp": max(abs(centroid[s] - sector_stats[s]["mean"]) for s in SECTORS),
+                         "distance_statistics": _distribution([d for _, d in items])})
+    for cluster in clusters:
+        cluster["comparison_percentage_points"] = {
+            str(other["cluster_id"]): {s: cluster["mean_sector_shares_percent"][s] - other["mean_sector_shares_percent"][s]
+                                       for s in SECTORS}
+            for other in clusters if other["cluster_id"] != cluster["cluster_id"]}
+    return {"year": 2024, "total_cities": len(rows), "clusters": clusters,
+            "sector_comparison": {s: {"highest_mean_cluster_id": max(clusters, key=lambda c: c["mean_sector_shares_percent"][s])["cluster_id"],
+                                        "mean_range_pp": max(c["mean_sector_shares_percent"][s] for c in clusters) - min(c["mean_sector_shares_percent"][s] for c in clusters)} for s in SECTORS},
+            "methodology": {"features": columns, "preprocessing": metadata["feature_description"],
+                            "centroid_source": "reports/cluster_analysis/cluster_centroids_2024.csv",
+                            "training_source": "src/finalize_kmeans.py",
+                            "distance": "Euclidean on raw shares (0–1); dimensionless",
+                            "std_ddof": 0, "quantiles": "linear, position=(n-1)*p",
+                            "distance_max_absolute_error": max_distance_error,
+                            "notes": ["Tâm được đọc từ kết quả K-Means; trung bình được tính độc lập từ nhãn cuối cùng. Hai giá trị có thể lệch nhẹ do điều kiện dừng của mô hình.",
+                                      "Trung bình tỷ trọng theo đô thị, không gia quyền theo tổng phát thải.",
+                                      "Độ lệch chuẩn và IQR tỷ trọng tính bằng điểm phần trăm; khoảng cách dùng tỷ trọng 0–1.",
+                                      "Phân cụm mô tả cơ cấu năm 2024, không suy ra nhân quả, mức phát thải tuyệt đối hay thứ hạng xanh.",
+                                      "K=3 cố định; mã cụm tùy ý; dữ liệu tổng hợp có sai số và không mô tả mọi đô thị giống nhau."]}}

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -69,6 +69,28 @@ def overview(country: str | None = None, cluster_id: int | None = Query(default=
 @app.get("/api/clusters")
 def clusters():
     return _safe(data.all_clusters)
+
+
+@app.get("/api/cluster-explorer")
+def cluster_explorer():
+    return _safe(data.cluster_explorer)
+
+
+@app.get("/api/cluster-explorer/{cluster_id}/preview")
+def cluster_interpretation_preview(cluster_id: int = Path(ge=0, le=2)):
+    return _safe(advisor.cluster_preview, cluster_id)
+
+
+@app.post("/api/cluster-explorer/{cluster_id}/interpret")
+async def cluster_interpretation(cluster_id: int = Path(ge=0, le=2)):
+    try:
+        return await run_in_threadpool(advisor.interpret_cluster, cluster_id)
+    except (FileNotFoundError, ValueError, KeyError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        # Do not expose provider response bodies, request headers or credentials.
+        message = "Chưa đặt GEMINI_API_KEY trên backend." if "Chưa đặt GEMINI_API_KEY" in str(exc) else "Không thể tạo báo cáo Gemini. Kiểm tra kết nối, quota hoặc thử lại sau."
+        raise HTTPException(status_code=503, detail=message) from exc
 
 
 @app.get("/api/countries")

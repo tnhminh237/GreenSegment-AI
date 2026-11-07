@@ -4,6 +4,7 @@ import { SECTORS, SECTOR_LABELS } from '../constants.js';
 
 const TABS = [
   { id: 'overview', label: 'Tổng quan', Icon: BarChart3 },
+  { id: 'clusters', label: 'Cluster Explorer', Icon: Layers3 },
   { id: 'city', label: 'Tra cứu đô thị', Icon: Search },
   { id: 'advisor', label: 'Giải pháp công nghệ xanh', Icon: Sparkles },
   { id: 'about', label: 'Giới thiệu', Icon: Info },
