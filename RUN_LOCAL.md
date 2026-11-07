@@ -1,5 +1,23 @@
 # GreenSegment AI — Website localhost (React + FastAPI)
 
+## City Explorer — Giai đoạn 2
+
+Chọn **Tra cứu đô thị** trong sidebar. Tìm theo tên và lọc quốc gia trong sidebar; chọn kết quả để xem mã/tên/quốc gia, cụm, tổng GHG và phát thải của từng lĩnh vực. Biểu đồ đối chiếu đô thị với **tâm K-Means đã lưu**. Bảng cụm hiển thị riêng trung bình, trung vị, độ lệch chuẩn tổng thể và IQR. Ba lĩnh vực có chênh lệch tuyệt đối lớn nhất với tâm được tô nền, không dùng ngưỡng để kết luận bất thường.
+
+Phần khoảng cách mặc định chỉ hiển thị khoảng cách đô thị, trung vị cụm và phân vị thực nghiệm. Mở **Xem thống kê mở rộng của cụm** để xem các mốc Q1/Q3/P90/P95 và bảng thống kê lĩnh vực. Bảng phát thải hiển thị từng lĩnh vực thành một khối trên mobile; chênh lệch có dấu +/−, hai chữ số thập phân và đơn vị **điểm phần trăm**. Khi in/lưu PDF, bố cục riêng cho City Explorer bỏ sidebar và phần tìm kiếm, cho bảng vừa khổ giấy để không cắt cột chênh lệch.
+
+Báo cáo đô thị dùng tên Nông nghiệp, Năng lượng, Công nghiệp, Quốc tế, Dân cư, Giao thông, Chất thải. Backend bổ sung nhãn tiếng Việt vào đầu vào Gemini và thay tên biến lĩnh vực còn sót trong các trường văn bản trước khi kiểm tra độ dài. Prompt chỉ cho phép diễn giải mô tả, không coi chênh lệch là "đáng kể" hoặc "có ý nghĩa thống kê" khi chưa có kiểm định. Các thay đổi ngôn ngữ này chỉ áp dụng cho báo cáo đô thị.
+
+`GET /api/cities/{city_id}` giữ nguyên các trường cũ, bổ sung `analysis`: tỷ trọng gốc đủ độ chính xác, chênh lệch so với tâm, các ngành nổi bật và vị trí khoảng cách trong cùng cụm. Trường cũ `comparison_percentage_points` vẫn là chênh lệch so với trung bình; trường mới `analysis.comparison_to_centroid_pp` là chênh lệch so với tâm. Không đánh đồng hai giá trị.
+
+Phân vị khoảng cách dùng công thức `100 × count(distance <= city_distance) / số đô thị cùng cụm`, gồm chính đô thị và các khoảng cách bằng nhau. Đây là hàm phân phối thực nghiệm, không phải xác suất, kiểm định thống kê hoặc kết luận ngoại lệ. Phân vị cao hơn mô tả đô thị xa tâm hơn nhiều thành viên. Các mốc Q1/trung vị/Q3/P90/P95 được tính trên toàn cụm, độc lập với bộ lọc tra cứu.
+
+`POST /api/cities/{city_id}/interpret` tạo báo cáo Gemini bằng tiếng Việt 250–400 từ. Backend kiểm tra tổng phát thải, tỷ trọng, hình học K-Means; tính các chênh lệch trước khi làm tròn. Dữ liệu gửi Gemini được làm tròn đến 2 chữ số cho tỷ trọng/chênh lệch/phân vị và 4 chữ số cho khoảng cách. Không đọc `green_solutions.json`, không đề xuất công nghệ và không chuyển đổi đơn vị EDGAR. Báo cáo dùng cùng hợp đồng JSON và kiểm tra độ dài như Cluster Explorer; giao diện hiển thị bốn phần diễn giải thay vì JSON thô.
+
+Để kiểm tra, khởi động backend và frontend theo mục 3–4 bên dưới. Tìm **Nagoya — Japan (5213, cụm 2)**, **Shanghai — China (11345, cụm 1)** và **Los Angeles — United States (2007, cụm 0)**. Với backend đã có `GEMINI_API_KEY`, nhấn **Phân tích bằng Gemini** để gọi API thật. Kiểm thử tự động `python -m unittest discover -s tests -v` dùng mock, không gọi Gemini thật.
+
+Giới hạn: đơn vị GHG gốc chưa được xác minh; K=3 và dữ liệu năm 2024 được giữ nguyên. Python kiểm tra số liệu đầu vào và cấu trúc/độ dài đầu ra; ý nghĩa nội dung AI vẫn cần người dùng đối chiếu. Báo cáo chỉ lưu trong bộ nhớ trang; chuyển đô thị bỏ qua yêu cầu đang chờ ở trình duyệt, không đảm bảo hủy yêu cầu đã tới Gemini. Nếu thay dữ liệu cần khởi động lại backend để làm mới cache.
+
 ## Cluster Explorer — Giai đoạn 1
 
 Trong sidebar, chọn **Cluster Explorer**, rồi chọn cụm 0, 1 hoặc 2. Trang hiển thị thống kê toàn bộ cụm, độc lập với bộ lọc sidebar: số lượng/tỷ lệ đô thị, tâm K-Means, trung bình/trung vị tỷ trọng, độ lệch chuẩn tổng thể, IQR và phân bố khoảng cách Euclid. So sánh cơ cấu giữa cả ba cụm dùng trung bình theo đô thị, không gia quyền theo lượng phát thải.
@@ -100,7 +118,7 @@ Nếu backend đang chạy mà chưa đặt key, nhấn Ctrl+C để dừng, đ�
 ## 6. Website có những gì?
 
 1. **Tổng quan**: số liệu thật, bản đồ thế giới, điểm đô thị tô màu theo K-Means, tỷ trọng ngành của 3 cụm.
-2. **Tra cứu đô thị**: tìm kiếm, phân trang, xem hồ sơ phát thải và so sánh đô thị với trung bình cụm.
+2. **Tra cứu đô thị / City Explorer**: tìm kiếm, phân trang, xem phát thải 7 lĩnh vực, so sánh với tâm và thống kê cụm, phân vị khoảng cách, diễn giải hồ sơ bằng Gemini.
 3. **Giải pháp công nghệ xanh**: gọi `src/gemini_advisor.py` cho đô thị hoặc cụm, hiển thị giải pháp với điều kiện, giới hạn và nguồn.
 4. **Giới thiệu**: dữ liệu, phương pháp và giới hạn dự án.
 

@@ -22,16 +22,18 @@ export function ClusterStackedChart({ clusters, filtered = false }) {
   </div>;
 }
 
-export function CitySectorChart({ shares, clusterMeans }) {
-  const rows = SECTORS.map((s) => ({ name: SECTOR_LABELS[s], city: shares?.[s] || 0, cluster: clusterMeans?.[s] || 0 }));
+export function CitySectorChart({ shares, clusterMeans, clusterCentroid }) {
+  const reference = clusterCentroid ?? clusterMeans;
+  const referenceLabel = clusterCentroid ? 'Tâm K-Means' : 'Trung bình cụm';
+  const rows = SECTORS.map((s) => ({ name: SECTOR_LABELS[s], city: shares?.[s] || 0, cluster: reference?.[s] || 0 }));
   return <div className="chart-wrap city-sector-chart">
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={rows} layout="vertical" margin={{ top: 8, right: 25, bottom: 6, left: 10 }}>
         <CartesianGrid stroke="#edf1f2" horizontal={false} strokeDasharray="3 5"/>
-        <XAxis type="number" tickFormatter={(n) => `${n}%`} domain={[0, 'auto']} tick={{ fontSize: 11 }} />
+        <XAxis type="number" tickFormatter={(n) => pct(n, 0)} domain={[0, 100]} tick={{ fontSize: 11 }} />
         <YAxis type="category" dataKey="name" width={85} tick={{ fontSize: 11, fill: '#426168' }} axisLine={false} tickLine={false}/>
-        <Tooltip formatter={(v, n) => [pct(v, 2), n === 'city' ? 'Đô thị' : 'Trung bình cụm']} />
-        <Legend formatter={(name) => name === 'city' ? 'Đô thị' : 'Trung bình cụm'} verticalAlign="top" height={28} />
+        <Tooltip formatter={(v, n) => [pct(v, 2), n === 'city' ? 'Đô thị' : referenceLabel]} />
+        <Legend formatter={(name) => name === 'city' ? 'Đô thị' : referenceLabel} verticalAlign="top" height={28} />
         <Bar dataKey="city" fill="#087f68" maxBarSize={15} radius={[0, 4, 4, 0]}/>
         <Bar dataKey="cluster" fill="#b9dcd0" maxBarSize={15} radius={[0, 4, 4, 0]}/>
       </BarChart>

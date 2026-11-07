@@ -124,6 +124,20 @@ def city_details(city_id: str):
     return result
 
 
+@app.post("/api/cities/{city_id}/interpret")
+async def city_interpretation(city_id: str):
+    try:
+        result = await run_in_threadpool(advisor.interpret_city, city_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Không tìm thấy đô thị.")
+        return result
+    except (FileNotFoundError, ValueError, KeyError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        message = "Chưa đặt GEMINI_API_KEY trên backend." if "Chưa đặt GEMINI_API_KEY" in str(exc) else "Không thể tạo báo cáo đô thị bằng Gemini. Kiểm tra kết nối, quota hoặc thử lại sau."
+        raise HTTPException(status_code=503, detail=message) from exc
+
+
 @app.get("/api/catalog")
 def catalog():
     return _safe(data.solutions_catalog)

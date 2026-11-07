@@ -5,6 +5,7 @@ import csv
 import json
 import math
 import statistics
+from bisect import bisect_right
 from collections import Counter
 from functools import lru_cache
 from pathlib import Path
@@ -131,7 +132,8 @@ def city_details(city_id: str) -> dict[str, Any] | None:
             comparisons[sector] = round(
                 city["shares_percent"][sector] - cluster["mean_sector_shares_percent"][sector], 4
             )
-    return {**city, "cluster": cluster, "comparison_percentage_points": comparisons}
+    return {**city, "cluster": cluster, "comparison_percentage_points": comparisons,
+            "analysis": city_analysis(city_id)}
 
 
 def overview(country: str | None = None, cluster_id: int | None = None, sector: str | None = None) -> dict[str, Any]:
@@ -281,3 +283,67 @@ def cluster_explorer() -> dict[str, Any]:
                                       "Độ lệch chuẩn và IQR tỷ trọng tính bằng điểm phần trăm; khoảng cách dùng tỷ trọng 0–1.",
                                       "Phân cụm mô tả cơ cấu năm 2024, không suy ra nhân quả, mức phát thải tuyệt đối hay thứ hạng xanh.",
                                       "K=3 cố định; mã cụm tùy ý; dữ liệu tổng hợp có sai số và không mô tả mọi đô thị giống nhau."]}}
+
+
+@lru_cache(maxsize=1)
+def _city_analysis_inputs():
+    # cluster_explorer validates every stored distance against the saved centers.
+    clusters = {c["cluster_id"]: c for c in cluster_explorer()["clusters"]}
+    rows = _read_csv(CITY_PATH)
+    distances = {cid: [] for cid in clusters}
+    for row in rows:
+        distances[int(row["cluster_id"])].append(float(row["distance_to_centroid"]))
+    return ({row["city_id"]: row for row in rows},
+            {cid: sorted(values) for cid, values in distances.items()}, clusters)
+
+
+def city_analysis(city_id: str) -> dict[str, Any] | None:
+    """Full-precision city metrics; never derive differences from rounded shares."""
+    rows, distances, clusters = _city_analysis_inputs()
+    row = rows.get(city_id)
+    if row is None:
+        return None
+    cid = int(row["cluster_id"])
+    cluster = {key: clusters[cid][key] for key in (
+        "cluster_id", "cluster_name", "short_name", "color", "city_count", "centroid_percent",
+        "sector_statistics_percent", "mean_sector_shares_percent", "centroid_mean_max_gap_pp", "distance_statistics")}
+    shares = {s: float(row[f"share_{s}_2024"]) * 100 for s in SECTORS}
+    emissions = {s: float(row[f"ghg_{s}_2024"]) for s in SECTORS}
+    total = float(row["ghg_total_2024"])
+    if (not math.isfinite(total) or total <= 0
+            or not all(math.isfinite(v) and v >= 0 for v in emissions.values())
+            or not math.isclose(sum(emissions.values()), total, rel_tol=1e-6)
+            or any(not math.isclose(emissions[s] / total * 100, shares[s], abs_tol=1e-6) for s in SECTORS)):
+        raise ValueError("Phát thải tuyệt đối và tỷ trọng đô thị không khớp dữ liệu gốc.")
+    differences = {s: shares[s] - cluster["centroid_percent"][s] for s in SECTORS}
+    distance = float(row["distance_to_centroid"])
+    values = distances[cid]
+    count_le = bisect_right(values, distance)
+    median = cluster["distance_statistics"]["median"]
+    if math.isclose(distance, median, abs_tol=1e-12):
+        distance_summary = "Khoảng cách xấp xỉ trung vị của cụm."
+    elif distance < median:
+        distance_summary = "Khoảng cách nhỏ hơn trung vị: cơ cấu đô thị gần tâm hơn mức giữa của cụm."
+    else:
+        distance_summary = "Khoảng cách lớn hơn trung vị: cơ cấu đô thị xa tâm hơn mức giữa của cụm."
+    return {"year": 2024, "city_id": city_id, "city_name": row["city_name"],
+            "country_name": row["country_name"], "cluster_id": cid,
+            "ghg_total_2024": total, "emissions_by_sector": emissions, "shares_percent": shares,
+            "cluster": cluster, "comparison_to_centroid_pp": differences,
+            "top_sectors": sorted(SECTORS, key=lambda s: shares[s], reverse=True)[:3],
+            "notable_differences": [{"sector": s, "difference_pp": differences[s]}
+                                    for s in sorted(SECTORS, key=lambda s: abs(differences[s]), reverse=True)[:3]],
+            "distance_to_centroid": distance,
+            "position_in_cluster": {"reference_city_count": len(values),
+                                    "count_at_or_below": count_le,
+                                    "percentile_rank_percent": 100 * count_le / len(values),
+                                    "summary": distance_summary,
+                                    "method": "100 * count(distance <= city_distance) / cluster_city_count; includes self and ties",
+                                    "note": "Vị trí thực nghiệm trong cụm: phân vị cao hơn nghĩa là xa tâm hơn so với nhiều thành viên. Không phải xác suất, kiểm định thống kê hoặc kết luận ngoại lệ."},
+            "methodology": {"emission_units_verified": False,
+                            "emissions_unit": "Đơn vị gốc EDGAR, chưa xác minh; không chuyển đổi sang tCO₂e.",
+                            "distance": "Euclid trên 7 tỷ trọng gốc 0–1, không scaling/PCA; không có đơn vị.",
+                            "comparison": "Chênh lệch so với tâm K-Means đã lưu, không phải trung bình theo nhãn cuối cùng.",
+                            "dispersion": "Độ lệch chuẩn tổng thể ddof=0; IQR và chênh lệch tỷ trọng tính bằng điểm phần trăm.",
+                            "scope": "Đặc trưng của cụm toàn bộ đô thị; không thay đổi theo bộ lọc tra cứu.",
+                            "limits": "K=3 cố định, dữ liệu 2024; cơ cấu khác lượng tuyệt đối. Không suy ra nguyên nhân, chất lượng môi trường, nhu cầu thị trường hoặc tính khả thi công nghệ."}}
