@@ -6,7 +6,7 @@ import Overview from './pages/Overview.jsx';
 import CityExplorer from './pages/CityExplorer.jsx';
 import GreenAdvisor from './pages/GreenAdvisor.jsx';
 import About from './pages/About.jsx';
-import ClusterExplorer from './pages/ClusterExplorer.jsx';
+import MarketExplorer from './pages/MarketExplorer.jsx';
 
 const INITIAL_FILTERS = { country: '', cluster_id: '', sector: '' };
 
@@ -34,7 +34,7 @@ export default function App() {
         <div className="utility-bar"><span>GREEN INTELLIGENCE PLATFORM</span>
           <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">API Docs <ArrowUpRight size={13}/></a></div>
         {page === 'overview' && <Overview filters={filters} onSelectCity={onSelectCityFromMap}/>}
-        {page === 'clusters' && <ClusterExplorer/>}
+        {page === 'market' && <MarketExplorer countries={countries} onSelectCity={onSelectCityFromMap}/>}
         {page === 'city' && <CityExplorer filters={filters} selectedCityId={selectedCityId}
           onSelectCity={(id) => setSelectedCityId(String(id))} onGoAdvisor={() => { setPage('advisor'); window.scrollTo(0, 0); }}/>} 
         {page === 'advisor' && <GreenAdvisor selectedCityId={selectedCityId} onSelectCity={(id) => setSelectedCityId(String(id))}/>}

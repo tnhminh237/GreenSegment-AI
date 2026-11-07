@@ -1,12 +1,11 @@
 import React from 'react';
-import { BarChart3, Globe2, Info, Layers3, Leaf, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react';
+import { BarChart3, Globe2, Info, Layers3, Leaf, Search, SlidersHorizontal, Telescope, X } from 'lucide-react';
 import { SECTORS, SECTOR_LABELS } from '../constants.js';
 
 const TABS = [
   { id: 'overview', label: 'Tổng quan', Icon: BarChart3 },
-  { id: 'clusters', label: 'Cluster Explorer', Icon: Layers3 },
   { id: 'city', label: 'Tra cứu đô thị', Icon: Search },
-  { id: 'advisor', label: 'Giải pháp công nghệ xanh', Icon: Sparkles },
+  { id: 'market', label: 'Market Explorer', Icon: Telescope },
   { id: 'about', label: 'Giới thiệu', Icon: Info },
 ];
 
@@ -20,7 +19,7 @@ export default function Sidebar({ page, onPage, filters, onFilter, countries, mo
         <div><strong>GreenSegment <span>AI</span></strong><small>URBAN EMISSION INTELLIGENCE</small></div>
         <button className="mobile-close" aria-label="Đóng menu" onClick={() => setMobileOpen(false)}><X size={20}/></button>
       </div>
-      <div className="sidebar-desc">Khám phá cấu trúc phát thải khí nhà kính và định hướng công nghệ xanh cho đô thị toàn cầu.</div>
+      <div className="sidebar-desc">Phân tích cơ cấu phát thải đô thị và hỗ trợ khám phá thị trường công nghệ xanh.</div>
       <div className="sidebar-divider" />
       <div className="nav-label">KHÁM PHÁ</div>
       <nav className="nav-list" aria-label="Điều hướng chính">

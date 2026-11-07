@@ -6,6 +6,7 @@ import math
 import statistics
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError, URLError
 
 from fastapi.testclient import TestClient
 
@@ -154,6 +155,96 @@ class ClusterExplorerTests(unittest.TestCase):
         with patch.object(advisor._advisor(), "call_gemini", side_effect=AssertionError("Network forbidden")):
             for payload in [{"mode": "city", "city_id": "1"}, {"mode": "cluster", "cluster_id": 0}]:
                 self.assertEqual(self.client.post("/api/advisor/preview", json=payload).status_code, 200)
+
+    def test_cluster_failure_categories_and_safe_logs(self):
+        secret = "private-key-provider-body-DO-NOT-LOG"
+        invalid_json = json.JSONDecodeError("private content", secret, 0)
+        wrapped_json = RuntimeError(secret)
+        wrapped_json.__cause__ = invalid_json
+        wrapped_http = RuntimeError(secret)
+        wrapped_http.__cause__ = HTTPError("https://provider/?key=" + secret, 429, secret, {"Authorization": secret}, None)
+        cases = [
+            (wrapped_http, "gemini_http", 503, 429),
+            (RuntimeError("HTTP 500 " + secret), "gemini_http", 503, 500),
+            (RuntimeError("HTTP 502 " + secret), "gemini_http", 503, 502),
+            (RuntimeError("HTTP 503 " + secret), "gemini_http", 503, 503),
+            (RuntimeError("HTTP 400 " + secret), "gemini_http", 503, 400),
+            (RuntimeError("HTTP 404 " + secret), "gemini_http", 503, 404),
+            (TimeoutError(secret), "gemini_timeout", 503, None),
+            (URLError(TimeoutError(secret)), "gemini_timeout", 503, None),
+            (URLError(secret), "gemini_connection", 503, None),
+            (wrapped_json, "gemini_json", 503, None),
+            (invalid_json, "gemini_json", 503, None),
+            (RuntimeError("Chưa đặt GEMINI_API_KEY " + secret), "gemini_config", 503, None),
+            (RuntimeError(secret), "gemini_response", 503, None),
+            (TypeError(secret), "cluster_internal", 500, None),
+        ]
+        for error, category, status, provider_status in cases:
+            with self.subTest(category=category, error=type(error).__name__):
+                with patch.object(advisor._advisor(), "call_gemini", side_effect=error) as call:
+                    with self.assertLogs(advisor.CLUSTER_LOG, level="ERROR") as logs:
+                        response = self.client.post("/api/cluster-explorer/0/interpret", json={})
+                body = response.json()
+                self.assertEqual(response.status_code, status)
+                self.assertEqual(body["error_code"], category)
+                self.assertEqual(body.get("provider_status"), provider_status)
+                self.assertEqual(response.headers["X-Request-ID"], body["request_id"])
+                self.assertIn(body["request_id"], " ".join(logs.output))
+                self.assertNotIn(secret, response.text + " ".join(logs.output))
+                self.assertEqual(call.call_count, 1)
+
+    def test_cluster_schema_diagnostics_do_not_log_content(self):
+        secret = "private-report-text-DO-NOT-LOG"
+        for raw in [{"summary": secret}, {**self.report_fixture(), secret: secret},
+                    {**self.report_fixture(), "comparisons": [secret, " "]}]:
+            with patch.object(advisor._advisor(), "call_gemini", return_value=raw):
+                with self.assertLogs(advisor.CLUSTER_LOG, level="ERROR") as logs:
+                    response = self.client.post("/api/cluster-explorer/0/interpret", json={})
+            self.assertEqual(response.status_code, 503)
+            self.assertEqual(response.json()["error_code"], "report_schema")
+            self.assertNotIn(secret, response.text + " ".join(logs.output))
+
+    def test_cluster_word_target_is_advisory_without_repair_call(self):
+        for words in [238, 249, 250, 400, 401, 430]:
+            # Controlled mock length; never calls Gemini or alters source data.
+            raw = {"summary": "từ " * 50, "comparisons": ["từ " * 35, "từ " * 35],
+                   "dispersion_and_representativeness": "từ " * 50,
+                   "research_questions": ["từ " * 10, "từ " * 10], "limitations": ["từ " * (words - 190)]}
+            with patch.object(advisor._advisor(), "call_gemini", return_value=raw) as call:
+                with self.assertLogs(advisor.CLUSTER_LOG, level="INFO") as logs:
+                    response = self.client.post("/api/cluster-explorer/0/interpret", json={})
+            body = response.json()
+            self.assertEqual(response.status_code, 200, body)
+            self.assertEqual(body["report"], advisor._validated_cluster_report(raw, require_word_target=False))
+            self.assertEqual(body["diagnostics"]["word_count"], words)
+            self.assertEqual(body["diagnostics"]["within_word_target"], 250 <= words <= 400)
+            self.assertEqual(body["diagnostics"]["word_target"], {"min": 250, "max": 400, "required": False})
+            self.assertNotIn("error_code", body)
+            self.assertIn(f'"word_count": {words}', " ".join(logs.output))
+            self.assertIn('"event": "accepted"', " ".join(logs.output))
+            self.assertEqual(call.call_count, 1)
+        raw = self.report_fixture()
+        expected = sum(len(t.split()) for v in raw.values() for t in (v if isinstance(v, list) else [v]))
+        with patch.object(advisor._advisor(), "call_gemini", return_value=raw):
+            with self.assertLogs(advisor.CLUSTER_LOG, level="INFO") as logs:
+                response = self.client.post("/api/cluster-explorer/0/interpret", json={})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["diagnostics"]["word_count"], expected)
+        self.assertIn(f'"word_count": {expected}', " ".join(logs.output))
+
+    def test_optional_cluster_word_target_still_rejects_invalid_content(self):
+        # Skipping the word target must never skip schema, empty-item or size checks.
+        for raw in [{}, {**self.report_fixture(), "summary": " "},
+                    {**self.report_fixture(), "comparisons": ["valid", " "]},
+                    {**self.report_fixture(), "research_questions": ["only one"]},
+                    {**self.report_fixture(), "summary": "từ " * 1000}]:
+            with self.subTest(fields=list(raw)):
+                with patch.object(advisor._advisor(), "call_gemini", return_value=raw) as call:
+                    with self.assertLogs(advisor.CLUSTER_LOG, level="ERROR"):
+                        response = self.client.post("/api/cluster-explorer/0/interpret", json={})
+                self.assertEqual(response.status_code, 503)
+                self.assertEqual(response.json()["error_code"], "report_schema")
+                self.assertEqual(call.call_count, 1)
 
     def test_transport_preserves_existing_advisor_defaults(self):
         module = advisor._advisor()

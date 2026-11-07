@@ -2,10 +2,10 @@ import React from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from 'recharts';
 import { SECTORS, SECTOR_LABELS, SECTOR_COLORS, pct, num } from '../constants.js';
 
-export function ClusterStackedChart({ clusters, filtered = false }) {
+export function ClusterStackedChart({ clusters, filtered = false, basis = 'mean' }) {
   const rows = clusters.map((c) => ({
     cluster: `Cụm ${c.cluster_id}`,
-    ...Object.fromEntries(SECTORS.map((s) => [s, (filtered ? c.filtered_mean_sector_shares_percent : c.mean_sector_shares_percent)?.[s] || 0])),
+    ...Object.fromEntries(SECTORS.map((s) => [s, (filtered ? c.filtered_mean_sector_shares_percent : basis === 'centroid' ? c.centroid_percent : c.mean_sector_shares_percent)?.[s] || 0])),
   }));
   return <div className="chart-wrap stacked-chart">
     <div className="stacked-plot"><ResponsiveContainer width="100%" height="100%">

@@ -10,10 +10,12 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from . import advisor_service as advisor
 from . import data_service as data
+from . import market_service as market
 
 app = FastAPI(title="GreenSegment AI API", version="1.0.0", description="K-Means EDGAR Cities 2024 + Gemini advisor")
 app.add_middleware(
@@ -24,6 +26,52 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
+
+
+@app.post("/api/market/parse")
+async def market_parse(request: market.ParseRequest):
+    return await _market_call(market.parse_request, request)
+
+
+@app.post("/api/market/search")
+def market_search(query: market.MarketQuery):
+    return _safe(market.search, query)
+
+
+@app.post("/api/market/export")
+def market_export(request: market.ExportRequest):
+    return _safe(market.export_csv, request)
+
+
+@app.post("/api/market/report")
+async def market_report(request: market.ReportRequest):
+    try:
+        result = await run_in_threadpool(market.generate_report, request)
+        return JSONResponse(content=result, headers={"X-Request-ID": result["diagnostics"]["request_id"]})
+    except market.ReportError as exc:
+        # Existing API clients require a string detail; other fields are safe diagnostics.
+        body = {"detail": f"{exc} Mã lỗi: {exc.category}. Mã yêu cầu: {exc.request_id}.",
+                "error_code": exc.category, "request_id": exc.request_id, "validator_version": market.VALIDATOR_VERSION}
+        if exc.provider_status is not None:
+            body["provider_status"] = exc.provider_status
+        if exc.validation is not None:
+            body["validation"] = exc.validation
+            path = exc.validation.get("field_path")
+            if path:
+                body["detail"] += f" Trường: {path}. Lý do: {exc.validation.get('rule', 'invalid_content')}."
+                if "observed" in exc.validation and "expected" in exc.validation:
+                    body["detail"] += f" Nhận: {exc.validation['observed']}; Python: {exc.validation['expected']}."
+        return JSONResponse(status_code=exc.status, content=body, headers={"X-Request-ID": exc.request_id})
+
+
+async def _market_call(callback, request):
+    try:
+        return await run_in_threadpool(callback, request)
+    except (FileNotFoundError, ValueError, KeyError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        message = "Chưa đặt GEMINI_API_KEY trên backend." if "Chưa đặt GEMINI_API_KEY" in str(exc) else "Không thể xử lý bằng Gemini. Kiểm tra kết nối, quota, nội dung phản hồi hoặc thử lại sau."
+        raise HTTPException(status_code=503, detail=message) from exc
 
 
 class AdvisorRequest(BaseModel):
@@ -84,7 +132,13 @@ def cluster_interpretation_preview(cluster_id: int = Path(ge=0, le=2)):
 @app.post("/api/cluster-explorer/{cluster_id}/interpret")
 async def cluster_interpretation(cluster_id: int = Path(ge=0, le=2)):
     try:
-        return await run_in_threadpool(advisor.interpret_cluster, cluster_id)
+        result = await run_in_threadpool(advisor.interpret_cluster, cluster_id)
+        return JSONResponse(content=result, headers={"X-Request-ID": result["diagnostics"]["request_id"]})
+    except advisor.ClusterReportError as exc:
+        return JSONResponse(status_code=exc.status, content={
+            "detail": f"{exc} Mã lỗi: {exc.category}. Mã yêu cầu: {exc.request_id}.",
+            "error_code": exc.category, "request_id": exc.request_id, **exc.details,
+        }, headers={"X-Request-ID": exc.request_id})
     except (FileNotFoundError, ValueError, KeyError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
