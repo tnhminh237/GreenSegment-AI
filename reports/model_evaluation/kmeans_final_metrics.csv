@@ -1,0 +1,2 @@
+﻿dataset,n_cities,k,inertia,silhouette_sample,silhouette_sample_size,davies_bouldin,random_state,n_init
+all_cities_refit,11422,3,916.9205825794245,0.3986298797887567,2500,0.8492461519499562,42,20
