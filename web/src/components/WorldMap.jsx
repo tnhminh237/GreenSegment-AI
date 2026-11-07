@@ -8,7 +8,7 @@ function escapeHTML(value) {
   }[char]));
 }
 
-export default function WorldMap({ points = [], onSelectCity }) {
+export default function WorldMap({ points = [], onSelectCity, clusterOverlayRef }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const layerRef = useRef(null);
@@ -50,6 +50,7 @@ export default function WorldMap({ points = [], onSelectCity }) {
 
   return <div className="worldmap-wrap">
     <div className="worldmap" ref={containerRef} role="region" aria-label="Bản đồ các đô thị toàn cầu"/>
+    {clusterOverlayRef && <div className="map-cluster-overlay" ref={clusterOverlayRef}/>}
     <div className="map-legend">
       <span><i style={{ background: CLUSTER_COLORS[0] }}/> Dân cư · Giao thông</span>
       <span><i style={{ background: CLUSTER_COLORS[1] }}/> Công nghiệp</span>

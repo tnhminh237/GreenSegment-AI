@@ -10,7 +10,7 @@ function signedDifference(value) {
   return `${value < 0 && magnitude !== 0 ? '−' : '+'}${num(magnitude, 2)}`;
 }
 
-export default function CityExplorer({ filters, selectedCityId, onSelectCity }) {
+export default function CityExplorer({ selectedCityId, onSelectCity }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [cities, setCities] = useState(null);
@@ -23,17 +23,16 @@ export default function CityExplorer({ filters, selectedCityId, onSelectCity }) 
   const [busy, setBusy] = useState(false);
   const aiRequest = useRef(null);
 
-  useEffect(() => { setPage(1); }, [search, filters.country, filters.cluster_id, filters.sector]);
+  useEffect(() => { setPage(1); }, [search]);
   useEffect(() => {
     const controller = new AbortController();
     const timer = setTimeout(() => {
       setError('');
-      apiGet('/cities', { search, country: filters.country, cluster_id: filters.cluster_id,
-        sector: filters.sector, page, page_size: 10 }, { signal: controller.signal })
+      apiGet('/cities', { search, page, page_size: 10 }, { signal: controller.signal })
         .then(setCities).catch((e) => { if (!controller.signal.aborted) setError(e.message); });
     }, 200);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [search, filters.country, filters.cluster_id, filters.sector, page]);
+  }, [search, page]);
 
   useEffect(() => {
     setDetails(null); setDetailError('');
@@ -70,7 +69,7 @@ export default function CityExplorer({ filters, selectedCityId, onSelectCity }) 
   const position = analysis?.position_in_cluster;
   const report = reports[selectedCityId]?.report;
   return <div className="page-enter city-explorer">
-    <div className="page-intro"><div><div className="eyebrow">KHÁM PHÁ / ĐÔ THỊ</div><h1>City Explorer</h1>
+    <div className="page-intro"><div><h1>City Explorer</h1>
       <p>Tìm đô thị theo tên, xem tỷ trọng 7 lĩnh vực và so sánh với đặc trưng của cụm K-Means.</p></div></div>
     <div className="city-layout">
       <Panel title={<><Search size={20}/> Tìm đô thị</>} subtitle="Chọn đô thị trong danh sách để mở hồ sơ" className="city-search-panel">
@@ -96,10 +95,11 @@ export default function CityExplorer({ filters, selectedCityId, onSelectCity }) 
       <div className="city-detail-stack">
         {detailError && <><ErrorBox message={detailError}/><button className="button button-outline" onClick={() => setDetailRefresh((n) => n + 1)}>Tải lại hồ sơ</button></>}
         {!selectedCityId ? <Panel className="selection-placeholder"><div className="empty-detail"><Building2 size={42}/><h2>Chọn một đô thị để bắt đầu</h2>
-          <p>Chọn trong danh sách bên trái hoặc nhấn trực tiếp vào một điểm trên bản đồ Tổng quan. Lọc quốc gia trong sidebar.</p></div></Panel> : !current ? !detailError && <Panel><Loading text="Đang đọc hồ sơ đô thị..."/></Panel> : <>
+          <p>Tìm theo tên đô thị hoặc quốc gia trong danh sách bên trái, hoặc nhấn trực tiếp vào một điểm trên bản đồ Tổng quan. Tìm kiếm độc lập với bộ lọc của Tổng quan.</p></div></Panel> : !current ? !detailError && <Panel><Loading text="Đang đọc hồ sơ đô thị..."/></Panel> : <>
           <Panel className="city-hero-panel">
-            <div className="city-hero"><div><span className="eyebrow">HỒ SƠ ĐÔ THỊ · EDGAR 2024</span>
-              <h2>{current.city_name}</h2><p><MapPin size={16}/>{current.country_name} · Mã đô thị {current.city_id}</p></div>
+            <div className="city-hero"><div>
+              <h2>{current.city_name}</h2><p><MapPin size={16}/>{current.country_name} · Mã đô thị {current.city_id}</p>
+              <p className="city-data-source">Dữ liệu EDGAR 2024</p></div>
               <span className="cluster-chip" style={{ color: CLUSTER_COLORS[current.cluster_id], borderColor: `${CLUSTER_COLORS[current.cluster_id]}55` }}>
                 <i style={{ background: CLUSTER_COLORS[current.cluster_id] }}/> Cụm {current.cluster_id} · {cluster?.short_name}
               </span></div>

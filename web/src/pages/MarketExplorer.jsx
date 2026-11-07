@@ -85,7 +85,7 @@ export default function MarketExplorer({ countries, onSelectCity }) {
   const reportFact = (key) => report?.verified_facts?.[key]?.display ?? '—';
 
   return <div className="page-enter market-explorer">
-    <div className="page-intro"><div><div className="eyebrow">KHÁM PHÁ / NGHIÊN CỨU THỊ TRƯỜNG B2B</div>
+    <div className="page-intro"><div>
       <h1>Market Explorer</h1><p>Sàng lọc đô thị từ dữ liệu phát thải để xác định phạm vi nghiên cứu thị trường công nghệ xanh.</p>
     </div><span className="year-pill"><Telescope size={16}/> EDGAR 2024 · K=3</span></div>
     <div className="market-steps"><span>01 · Hiểu yêu cầu</span><span>02 · Xác nhận tiêu chí</span><span>03 · Khám phá dữ liệu</span><span>04 · Tổng hợp nghiên cứu</span></div>
@@ -102,7 +102,7 @@ export default function MarketExplorer({ countries, onSelectCity }) {
           <label className="market-ack"><input type="checkbox" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)}/>Tôi đã chỉnh bộ lọc và đồng ý bỏ qua các yêu cầu chưa hỗ trợ.</label></>}
       </div>}
     </Panel>
-    <Panel title={<><Search size={20}/> Kiểm tra và chỉnh tiêu chí</>} subtitle="Tìm trên toàn bộ 11.422 đô thị · Bộ lọc độc lập với sidebar">
+    <Panel title={<><Search size={20}/> Kiểm tra và chỉnh tiêu chí</>} subtitle="Tìm trên toàn bộ 11.422 đô thị · Tiêu chí riêng, độc lập với bộ lọc Tổng quan">
       <form onSubmit={(e) => { e.preventDefault(); search(); }}>
         <fieldset disabled={pending} className="market-fields">
           <label>Lĩnh vực nghiên cứu<select id="market-sector" value={draft.sector} onChange={(e) => edit('sector', e.target.value)}>{SECTORS.map((s) => <option key={s} value={s}>{SECTOR_LABELS[s]}</option>)}</select></label>
@@ -123,7 +123,7 @@ export default function MarketExplorer({ countries, onSelectCity }) {
     </Panel>
     {result && <div className="market-results" aria-live="polite">
       {stale && <Note>Tiêu chí đã thay đổi. Các kết quả bên dưới thuộc bộ lọc đã chạy trước đó; xác nhận tìm kiếm lại trước khi xuất CSV hoặc tạo báo cáo.</Note>}
-      <div className="market-result-heading"><div><div className="eyebrow">KẾT QUẢ ĐÃ XÁC NHẬN · {sectorLabel?.toUpperCase()}</div><h2>Phạm vi nghiên cứu từ dữ liệu phát thải</h2></div><span className="year-pill">{SORT_LABELS[result.query.sort_by]} · {result.query.sort_order === 'desc' ? 'Giảm dần' : 'Tăng dần'}</span></div>
+      <div className="market-result-heading"><div><h2>Phạm vi nghiên cứu từ dữ liệu phát thải</h2><p className="market-result-scope">Lĩnh vực đang phân tích: {sectorLabel}</p></div><span className="year-pill">{SORT_LABELS[result.query.sort_by]} · {result.query.sort_order === 'desc' ? 'Giảm dần' : 'Tăng dần'}</span></div>
       <div className="stat-grid">
         <div className="stat-card"><div className="stat-icon green"><Building2 size={23}/></div><span>Toàn bộ đô thị phù hợp</span><strong>{num(all.city_count)}</strong><small>Trong {num(result.source_city_count)} đô thị</small></div>
         <div className="stat-card"><div className="stat-icon blue"><Globe2 size={23}/></div><span>Quốc gia trong tập phù hợp</span><strong>{num(all.country_count)}</strong><small>Tính trên toàn bộ kết quả</small></div>

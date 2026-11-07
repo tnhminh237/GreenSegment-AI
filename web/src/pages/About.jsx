@@ -4,10 +4,10 @@ import { Note, Panel } from '../components/UI.jsx';
 
 export default function About() {
   return <div className="page-enter">
-    <div className="page-intro"><div><div className="eyebrow">VỀ DỰ ÁN / GREENSEGMENT AI</div><h1>Công nghệ dữ liệu cho đô thị bền vững</h1>
+    <div className="page-intro"><div><h1>Công nghệ dữ liệu cho đô thị bền vững</h1>
       <p>Hệ thống AI phân nhóm đô thị toàn cầu theo cơ cấu phát thải khí nhà kính và định hướng giải pháp công nghệ xanh phù hợp.</p></div></div>
     <div className="about-hero"><div className="about-hero-icon"><Leaf size={36}/></div>
-      <div><span>AI IN BUSINESS · FINAL PROJECT</span><h2>GreenSegment AI</h2><p>From emission profiles to informed green technology exploration.</p></div></div>
+      <div><h2>GreenSegment AI</h2><p>From emission profiles to informed green technology exploration.</p></div></div>
     <Panel title="Mục tiêu nghiên cứu"><div className="goal-grid">
       {[{Icon: Globe2, title:'Phân nhóm đô thị',text:'Nhận diện 3 kiểu cơ cấu phát thải trên tập đô thị toàn cầu.'},
         {Icon: BarChart3,title:'Giải thích đặc trưng',text:'Đọc tỷ trọng 7 lĩnh vực, so sánh đô thị với nhóm tham chiếu.'},

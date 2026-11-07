@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Building2, Layers3, Sparkles } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Sparkles } from 'lucide-react';
 import { apiGet, apiPost } from '../api.js';
 import { SECTOR_LABELS, SECTOR_COLORS, num, pct, topSectors } from '../constants.js';
 import { ClusterStackedChart } from '../components/SectorCharts.jsx';
 import { ErrorBox, Loading, Note, Panel } from '../components/UI.jsx';
 
-export default function ClusterExplorer() {
+export default function ClusterExplorer({ selectorContainer = null }) {
   const [stats, setStats] = useState(null);
   const [selected, setSelected] = useState(0);
   const [error, setError] = useState('');
@@ -40,36 +41,42 @@ export default function ClusterExplorer() {
   const cluster = stats?.clusters.find((c) => c.cluster_id === selected);
   const report = reports[selected]?.report;
   const highlights = cluster ? topSectors(cluster.centroid_percent, 3) : [];
+  const selector = cluster && <div className="ce-selector" role="group" aria-label="Chọn cụm K-Means">
+    {stats.clusters.map((c) => <button key={c.cluster_id} type="button" aria-pressed={selected === c.cluster_id}
+      aria-label={`Cụm ${c.cluster_id} · ${c.short_name}: ${num(c.city_count)} đô thị · ${pct(c.city_percentage, 2)} toàn bộ dữ liệu. Chọn hồ sơ cụm.`}
+      className={selected === c.cluster_id ? 'selected' : ''} style={{ '--cluster-color': c.color }} onClick={() => selectCluster(c.cluster_id)}>
+      <span><small className="ce-cluster-label">Cụm {c.cluster_id}</small><strong>{c.short_name}</strong>
+        <small className="ce-cluster-size"><span>{num(c.city_count)}<span className="ce-cluster-unit"> đô thị</span></span><span className="ce-cluster-separator"> · </span><span>{pct(c.city_percentage, 2)}</span></small></span>
+    </button>)}
+  </div>;
 
   return <section className="cluster-explorer overview-clusters" aria-labelledby="cluster-exploration-title">
     <header className="ce-section-heading">
-      <div className="eyebrow">CẤU TRÚC CỤM / TOÀN BỘ DỮ LIỆU</div>
       <h2 id="cluster-exploration-title">Khám phá các cụm đô thị</h2>
       <p>So sánh ba nhóm đô thị và tìm hiểu đặc điểm của từng cụm.</p>
     </header>
     {error && <><ErrorBox message={error}/><button className="button button-outline" onClick={() => setRefresh((n) => n + 1)}>Tải lại dữ liệu</button></>}
     {!stats && !error && <Loading/>}
     {cluster && <>
-      <p className="ce-scope ce-global-scope">Toàn bộ {num(stats.total_cities)} đô thị · Biểu đồ, quy mô cụm và diễn giải Gemini dưới đây không thay đổi theo bộ lọc bên trái. Bộ chọn cụm chỉ thay đổi hồ sơ đang xem.</p>
-      <Panel title="So sánh cơ cấu GHG của ba cụm" subtitle="7 tỷ trọng tại tâm K-Means · Mỗi cụm tương ứng 100%">
-        <ClusterStackedChart clusters={stats.clusters} basis="centroid"/>
-      </Panel>
-      <div className="ce-selector" role="group" aria-label="Chọn cụm K-Means">
-        {stats.clusters.map((c) => <button key={c.cluster_id} aria-pressed={selected === c.cluster_id}
-          className={selected === c.cluster_id ? 'selected' : ''} style={{ '--cluster-color': c.color }} onClick={() => selectCluster(c.cluster_id)}>
-          <span className="ce-cluster-id">{c.cluster_id}</span><span><small>Cụm {c.cluster_id}</small><strong>{c.short_name}</strong></span>
-        </button>)}
-      </div>
-      <div className="ce-summary-grid">
-      <div className="stat-grid ce-kpi-grid">
-        <div className="stat-card"><div className="stat-icon green"><Building2 size={23}/></div><span>Số đô thị trong cụm</span><strong>{num(cluster.city_count)}</strong><small>Cụm {selected} · {cluster.short_name}</small></div>
-        <div className="stat-card"><div className="stat-icon blue"><Layers3 size={23}/></div><span>Tỷ lệ đô thị của cụm</span><strong>{pct(cluster.city_percentage, 2)}</strong><small>Trong toàn bộ {num(stats.total_cities)} đô thị</small></div>
-      </div>
-        <Panel title={`Lĩnh vực nổi bật · Cụm ${selected}`} subtitle="Ba tỷ trọng lớn nhất tại tâm K-Means">
+      {selectorContainer ? createPortal(selector, selectorContainer) : selector}
+      <div className="ce-exploration-grid">
+        <Panel className="ce-overview-chart" title="So sánh cơ cấu GHG của ba cụm" subtitle="7 tỷ trọng tại tâm K-Means · Mỗi cụm tương ứng 100%">
+          <ClusterStackedChart clusters={stats.clusters} basis="centroid" selectedClusterId={selected} onSelectCluster={selectCluster}/>
+          <p className="ce-chart-hint">Nhấn vào thanh hoặc tên cụm để xem hồ sơ.</p>
+        </Panel>
+        <Panel className="ce-cluster-profile" title={<><span className="ce-profile-id" style={{ color: cluster.color }}>Cụm {selected}</span><span className="ce-profile-name">{cluster.short_name}</span></>}>
+          <dl className="ce-profile-kpis">
+            <div><dt>Số đô thị trong cụm</dt><dd>{num(cluster.city_count)}</dd></div>
+            <div><dt>Tỷ lệ trong toàn bộ dữ liệu</dt><dd>{pct(cluster.city_percentage, 2)}</dd></div>
+          </dl>
+          <h3 className="ce-profile-subheading">Ba lĩnh vực nổi bật tại tâm K-Means</h3>
           <ul className="ce-highlights">{highlights.map((sector) => <li key={sector}>
-            <span><i style={{ background: SECTOR_COLORS[sector] }}/>{SECTOR_LABELS[sector]}</span>
-            <strong>{pct(cluster.centroid_percent[sector], 2)}</strong>
+            <div className="ce-highlight-heading"><span>{SECTOR_LABELS[sector]}</span><strong>{pct(cluster.centroid_percent[sector], 2)}</strong></div>
+            <div className="progress-track" role="progressbar" aria-label={SECTOR_LABELS[sector]} aria-valuenow={cluster.centroid_percent[sector]} aria-valuemin={0} aria-valuemax={100}>
+              <div style={{ background: SECTOR_COLORS[sector], width: `${cluster.centroid_percent[sector]}%` }}/>
+            </div>
           </li>)}</ul>
+          <p className="ce-profile-scope">Quy mô trên toàn bộ {num(stats.total_cities)} đô thị.</p>
         </Panel>
       </div>
       <Panel title={<><Sparkles size={20}/> Gemini diễn giải cụm</>} subtitle="Tìm hiểu đặc điểm nổi bật và sự khác biệt giữa các nhóm đô thị">

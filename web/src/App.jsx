@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowUpRight, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { apiGet } from './api.js';
 import Sidebar from './components/Sidebar.jsx';
 import Overview from './pages/Overview.jsx';
@@ -25,17 +25,14 @@ export default function App() {
   const onSelectCityFromMap = (cityId) => { setSelectedCityId(String(cityId)); setPage('city'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
   return <div className="app-shell">
-    <Sidebar page={page} onPage={setPage} filters={filters} onFilter={onFilter}
-      countries={countries} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen}/>
+    <Sidebar page={page} onPage={setPage} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen}/>
     <div className="main-shell">
       <div className="mobile-topbar"><button aria-label="Mở điều hướng" onClick={() => setMobileOpen(true)}><Menu size={22}/></button>
         <strong>GreenSegment AI</strong><span>2024</span></div>
       <div className="main-inner">
-        <div className="utility-bar"><span>GREEN INTELLIGENCE PLATFORM</span>
-          <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">API Docs <ArrowUpRight size={13}/></a></div>
-        {page === 'overview' && <Overview filters={filters} onSelectCity={onSelectCityFromMap}/>}
+        {page === 'overview' && <Overview filters={filters} onFilter={onFilter} countries={countries} onSelectCity={onSelectCityFromMap}/>}
         {page === 'market' && <MarketExplorer countries={countries} onSelectCity={onSelectCityFromMap}/>}
-        {page === 'city' && <CityExplorer filters={filters} selectedCityId={selectedCityId}
+        {page === 'city' && <CityExplorer selectedCityId={selectedCityId}
           onSelectCity={(id) => setSelectedCityId(String(id))} onGoAdvisor={() => { setPage('advisor'); window.scrollTo(0, 0); }}/>} 
         {page === 'advisor' && <GreenAdvisor selectedCityId={selectedCityId} onSelectCity={(id) => setSelectedCityId(String(id))}/>}
         {page === 'about' && <About/>}

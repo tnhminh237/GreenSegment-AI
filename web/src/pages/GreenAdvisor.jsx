@@ -53,7 +53,7 @@ export default function GreenAdvisor({ selectedCityId, onSelectCity }) {
   }
 
   return <div className="page-enter">
-    <div className="page-intro"><div><div className="eyebrow">AI ADVISOR / GIẢI PHÁP</div><h1>Định hướng công nghệ xanh với Gemini</h1>
+    <div className="page-intro"><div><h1>Định hướng công nghệ xanh với Gemini</h1>
       <p>Kết hợp hồ sơ phát thải EDGAR, nhóm tham chiếu K-Means và danh mục công nghệ xanh có nguồn.</p></div>
       <span className="ai-pill"><Sparkles size={15}/> Powered by Gemini</span>
     </div>
@@ -103,7 +103,7 @@ export default function GreenAdvisor({ selectedCityId, onSelectCity }) {
           {output.advisor.city_cluster_comparison_vi && <p>{output.advisor.city_cluster_comparison_vi}</p>}</div>
         <h3 className="subheading">Diễn giải cơ cấu phát thải</h3><p className="interpretation">{output.advisor.interpretation_vi}</p>
       </Panel>
-      <div className="solutions-title"><div><div className="eyebrow">GREEN TECHNOLOGY CATALOG</div><h2>Giải pháp đáng nghiên cứu</h2>
+      <div className="solutions-title"><div><h2>Giải pháp đáng nghiên cứu</h2>
         <p>{output.advisor.recommended_solutions?.length || 0} giải pháp được Gemini lựa chọn từ danh mục tham chiếu.</p></div></div>
       <div className="solution-grid">
         {output.advisor.recommended_solutions?.map((s) => <article className="solution-card" key={s.solution_id}>

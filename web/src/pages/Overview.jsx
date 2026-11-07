@@ -4,15 +4,17 @@ import { apiGet } from '../api.js';
 import { num } from '../constants.js';
 import ClusterExplorer from './ClusterExplorer.jsx';
 import WorldMap from '../components/WorldMap.jsx';
+import DataFilters from '../components/DataFilters.jsx';
 import { Empty, ErrorBox, Loading, Panel } from '../components/UI.jsx';
 
-export default function Overview({ filters, onSelectCity }) {
+export default function Overview({ filters, onFilter, countries, onSelectCity }) {
   const [stats, setStats] = useState(null);
   const [mapData, setMapData] = useState(null);
   const [error, setError] = useState('');
   const [mapError, setMapError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(0);
+  const [clusterOverlay, setClusterOverlay] = useState(null);
   const selected = {
     country: filters.country,
     cluster_id: filters.cluster_id === '' ? undefined : Number(filters.cluster_id),
@@ -33,11 +35,11 @@ export default function Overview({ filters, onSelectCity }) {
 
   return <div className="page-enter overview-page">
     <div className="page-intro">
-      <div><div className="eyebrow">DASHBOARD / TỔNG QUAN</div><h1>Bức tranh phát thải đô thị toàn cầu</h1>
+      <div><h1>Bức tranh phát thải đô thị toàn cầu</h1>
         <p>Khám phá đặc điểm cơ cấu phát thải khí nhà kính của các đô thị qua mô hình phân cụm K-Means.</p>
       </div>
-      <span className="year-pill"><span className="live-dot"/> Dữ liệu EDGAR 2024</span>
     </div>
+    <DataFilters filters={filters} onFilter={onFilter} countries={countries} inline/>
     {error && <ErrorBox message={error} />}
     {loading && !stats ? <Loading/> : stats && <>
       <div className="stat-grid">
@@ -53,12 +55,12 @@ export default function Overview({ filters, onSelectCity }) {
         <Panel title={<><MapPinned size={20}/> Bản đồ phân cụm đô thị</>} subtitle="Nhấn vào điểm đô thị để xem chi tiết" className="map-panel"
           action={<button type="button" className="icon-button" title="Tải lại" onClick={() => setRefresh((n) => n + 1)}><RefreshCw size={17}/></button>}>
           {mapError && <ErrorBox message={mapError} />}
-          <p className="ce-scope">Bản đồ và KPI số đô thị phía trên áp dụng bộ lọc quốc gia, lĩnh vực và cụm. Các KPI còn lại mô tả toàn bộ dữ liệu.</p>
-          <WorldMap points={mapData?.points ?? []} onSelectCity={onSelectCity}/>
-          {!mapError && mapData?.total_matching === 0 && <Empty>Không có đô thị thỏa bộ lọc. Hãy điều chỉnh bộ lọc bên trái.</Empty>}
+          <p className="ce-scope">Bản đồ và KPI số đô thị áp dụng bộ lọc phía trên. Các thẻ cụm trên bản đồ thể hiện quy mô toàn bộ cụm; nhấn thẻ để chọn hồ sơ diễn giải, không lọc bản đồ. Các KPI còn lại mô tả toàn bộ dữ liệu.</p>
+          <WorldMap points={mapData?.points ?? []} onSelectCity={onSelectCity} clusterOverlayRef={setClusterOverlay}/>
+          {!mapError && mapData?.total_matching === 0 && <Empty>Không có đô thị thỏa bộ lọc. Hãy điều chỉnh bộ lọc phía trên.</Empty>}
           <p className="map-caption">{mapData ? `Đang hiển thị ${num(mapData.shown)} / ${num(mapData.total_matching)} đô thị${mapData.sampled ? ' (lấy mẫu để bản đồ chạy mượt)' : ''}.` : 'Đang tải điểm đô thị...'} Nền bản đồ cần kết nối Internet.</p>
         </Panel>
     </>}
-    <ClusterExplorer/>
+    <ClusterExplorer selectorContainer={clusterOverlay}/>
   </div>;
 }
