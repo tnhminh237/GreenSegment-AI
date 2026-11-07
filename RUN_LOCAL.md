@@ -8,6 +8,8 @@ Tâm đọc từ `reports/cluster_analysis/cluster_centroids_2024.csv`; kiểm t
 
 API mới:
 
+Báo cáo Gemini được giới hạn 250–400 từ (đếm theo khoảng trắng), hiển thị bốn phần: Đặc điểm nổi bật; So sánh các cụm; Độ phân tán và tính đại diện; Hạn chế và hướng nghiên cứu. Backend chọn ba lĩnh vực nổi bật và ba khác biệt từ thống kê thật, làm tròn bản dữ liệu gửi Gemini đến hai chữ số cho tỷ trọng/điểm phần trăm và bốn chữ số cho khoảng cách, giữ nguyên thống kê gốc. JSON vẫn dùng các trường hiện có, giới hạn 2–3 mục so sánh và 2–3 câu hỏi nghiên cứu. Phản hồi sai cấu trúc hoặc ngoài giới hạn độ dài sẽ bị từ chối; không có báo cáo giả thay thế. Prompt yêu cầu các câu hỏi ngoài phạm vi năm 2024 nêu rõ dữ liệu cần bổ sung và cấm suy luận nguyên nhân, chất lượng môi trường, thị trường hoặc khả thi công nghệ từ tỷ trọng.
+
 - `GET /api/cluster-explorer`: thống kê Python của cả ba cụm.
 - `GET /api/cluster-explorer/{cluster_id}/preview`: dữ liệu đầu vào Gemini, không gọi API ngoài.
 - `POST /api/cluster-explorer/{cluster_id}/interpret`: diễn giải bằng Gemini, JSON gồm `summary`, `comparisons`, `dispersion_and_representativeness`, `research_questions`, `limitations`.

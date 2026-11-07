@@ -14,6 +14,17 @@ from api.main import app
 
 
 class ClusterExplorerTests(unittest.TestCase):
+    @staticmethod
+    def report_fixture():
+        return {
+            "summary": "Cụm được mô tả qua các lĩnh vực có tỷ trọng nổi bật trong cơ cấu phát thải. Những tỷ trọng này cho thấy cách phân bổ tương đối giữa các hoạt động được ghi nhận trong dữ liệu. Chúng không thể hiện quy mô phát thải tuyệt đối của từng đô thị. Vì vậy, tên cụm nên được hiểu như một nhãn mô tả cấu trúc chung của nhóm.",
+            "comparisons": [
+                "So với cụm đối chiếu thứ nhất, nên tập trung vào lĩnh vực có chênh lệch tỷ trọng lớn nhất. Khác biệt này giúp nhận diện sự phân bố tương đối giữa các nhóm đô thị, nhưng chưa chứng minh những hoạt động nào gây ra sự khác nhau.",
+                "Với cụm đối chiếu còn lại, một khác biệt cơ cấu đáng chú ý có thể giúp phân biệt các hồ sơ. Tuy nhiên, các đô thị trong cùng cụm vẫn có thể khác nhau đáng kể."],
+            "dispersion_and_representativeness": "Độ phân tán cho biết các thành viên có tập trung quanh cấu trúc chung hay không. Trung bình và trung vị cần được đọc cùng nhau để tránh xem một giá trị điển hình là hồ sơ của mọi thành viên. Khoảng cách đến tâm bổ sung góc nhìn về sự khác biệt đồng thời trên các lĩnh vực, nhưng không phải thước đo chất lượng môi trường.",
+            "limitations": ["K=3 cố định và dữ liệu chỉ phản ánh năm 2024. Các tỷ trọng không đủ để suy luận nguyên nhân, nhu cầu thị trường hoặc tính khả thi công nghệ; tâm cụm không đại diện hoàn toàn cho mọi đô thị."],
+            "research_questions": ["Những đô thị có cơ cấu khác tâm nhiều nhất tập trung ở lĩnh vực nào?", "Cơ cấu này có thay đổi qua thời gian hay không? Cần bổ sung dữ liệu các năm khác ngoài năm 2024."]}
+
     @classmethod
     def setUpClass(cls):
         cls.client = TestClient(app)
@@ -78,8 +89,7 @@ class ClusterExplorerTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/cities/missing").status_code, 404)
 
     def test_gemini_schema_and_context_without_network(self):
-        answer = {"summary": "Tóm tắt kiểm thử", "comparisons": ["So sánh thứ nhất", "So sánh thứ hai"],
-                  "dispersion_and_representativeness": "Diễn giải kiểm thử", "research_questions": ["Cần nghiên cứu thêm"], "limitations": ["Giới hạn kiểm thử"]}
+        answer = self.report_fixture()
         with patch.object(advisor._advisor(), "call_gemini", return_value=answer) as call:
             for cid in range(3):
                 response = self.client.post(f"/api/cluster-explorer/{cid}/interpret", json={})
@@ -88,9 +98,47 @@ class ClusterExplorerTests(unittest.TestCase):
                 self.assertEqual(response.json()["report"], answer)
                 context = call.call_args.args[0]
                 self.assertEqual(context["selected_cluster_id"], cid)
-                self.assertEqual(context["clusters"], self.stats["clusters"])
+                self.assertEqual(context, advisor.cluster_preview(cid))
                 self.assertNotIn("catalog_solutions", context)
-                self.assertEqual(call.call_args.kwargs["response_schema"]["required"], list(answer))
+                self.assertEqual(set(call.call_args.kwargs["response_schema"]["required"]), set(answer))
+
+    def test_context_precision_and_editorial_focus(self):
+        original = json.dumps(self.stats, sort_keys=True)
+        for cid in range(3):
+            context = advisor.cluster_preview(cid)
+            def check(value, distance=False):
+                if isinstance(value, dict):
+                    for key, item in value.items():
+                        check(item, distance or key.startswith("distance"))
+                elif isinstance(value, list):
+                    for item in value:
+                        check(item, distance)
+                elif isinstance(value, float):
+                    self.assertTrue(math.isfinite(value))
+                    self.assertEqual(value, round(value, 4 if distance else 2))
+            check(context)
+            focus = context["editorial_focus"]
+            expected = sorted(data.SECTORS, key=lambda s: self.stats["clusters"][cid]["mean_sector_shares_percent"][s], reverse=True)[:3]
+            self.assertEqual(focus["top_sectors"], expected)
+            self.assertEqual(len(focus["key_differences"]), 3)
+            self.assertEqual({d["other_cluster_id"] for d in focus["key_differences"]}, {0, 1, 2} - {cid})
+        self.assertEqual(json.dumps(self.stats, sort_keys=True), original)
+        self.assertEqual(advisor.cluster_preview(0)["clusters"][0]["city_percentage"], 65.49)
+        with self.assertRaises(ValueError):
+            advisor._round_context({"mean": float("nan")})
+
+    def test_report_length_item_limits_and_number_formatting(self):
+        answer = self.report_fixture()
+        advisor._validated_cluster_report(answer)
+        for invalid in ["ngắn", "từ " * 401]:
+            with self.assertRaises(ValueError):
+                advisor._validated_cluster_report({**answer, "summary": invalid, "comparisons": ["a", "b"], "dispersion_and_representativeness": "c", "research_questions": ["d", "e"], "limitations": ["f"]})
+        for field, items in [("research_questions", ["a"]), ("research_questions", ["a"] * 4), ("comparisons", ["a"] * 4)]:
+            with self.assertRaises(ValueError):
+                advisor._validated_cluster_report({**answer, field: items})
+        self.assertEqual(advisor._normalize_report_numbers("Tỷ lệ 65.48765540185607%; chênh lệch -0.0312452473 điểm phần trăm."), "Tỷ lệ 65,49%; chênh lệch -0,03 điểm phần trăm.")
+        self.assertEqual(advisor._normalize_report_numbers("Khoảng cách 0.123456789."), "Khoảng cách 0,1235.")
+        self.assertEqual(advisor._normalize_report_numbers("Có 7.480 đô thị."), "Có 7.480 đô thị.")
 
     def test_malformed_and_provider_errors_are_safe(self):
         for output in [{}, {"summary": 123}, {"summary": ""}]:

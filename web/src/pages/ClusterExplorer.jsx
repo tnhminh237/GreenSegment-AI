@@ -55,7 +55,7 @@ export default function ClusterExplorer() {
       <div className="ce-selector" role="group" aria-label="Chọn cụm K-Means">
         {stats.clusters.map((c) => <button key={c.cluster_id} aria-pressed={selected === c.cluster_id}
           className={selected === c.cluster_id ? 'selected' : ''} style={{ '--cluster-color': c.color }} onClick={() => selectCluster(c.cluster_id)}>
-          <span className="ce-cluster-id">0{c.cluster_id + 1}</span><span><small>Cụm {c.cluster_id}</small><strong>{c.short_name}</strong><small>{num(c.city_count)} đô thị · {pct(c.city_percentage, 2)}</small></span>
+          <span className="ce-cluster-id">{c.cluster_id}</span><span><small>Cụm {c.cluster_id}</small><strong>{c.short_name}</strong><small>{num(c.city_count)} đô thị · {pct(c.city_percentage, 2)}</small></span>
         </button>)}
       </div>
       <p className="ce-scope">Thống kê toàn bộ dữ liệu của cụm, độc lập với bộ lọc sidebar.</p>
@@ -70,9 +70,9 @@ export default function ClusterExplorer() {
           <div className="ce-profile-chart"><ResponsiveContainer width="100%" height="100%">
             <BarChart data={rows} layout="vertical" margin={{ left: 0, right: 15, top: 8, bottom: 8 }}>
               <CartesianGrid horizontal={false} strokeDasharray="3 5" stroke="#edf1f2"/>
-              <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }}/>
+              <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => pct(v, 0)} tick={{ fontSize: 11 }}/>
               <YAxis type="category" dataKey="name" width={85} tick={{ fontSize: 11 }}/>
-              <Tooltip formatter={(value) => pct(value, 3)}/><Legend/>
+              <Tooltip formatter={(value) => pct(value, 2)}/><Legend/>
               <Bar dataKey="centroid" name="Tâm K-Means" fill={cluster.color} maxBarSize={12}/>
               <Bar dataKey="mean" name="Trung bình" fill="#075944" maxBarSize={12}/>
               <Bar dataKey="median" name="Trung vị" fill="#b9dcd0" maxBarSize={12}/>
@@ -92,9 +92,9 @@ export default function ClusterExplorer() {
         <div className="ce-table-scroll"><table className="ce-table"><caption className="ce-scope">{cluster.cluster_name}</caption>
           <thead><tr>{['Lĩnh vực', 'Tâm', 'Trung bình', 'Trung vị', 'Độ lệch chuẩn', 'Q1', 'Q3', 'IQR'].map((t) => <th scope="col" key={t}>{t}</th>)}</tr></thead>
           <tbody>{SECTORS.map((s) => { const v = cluster.sector_statistics_percent[s]; return <tr key={s}><th scope="row">{SECTOR_LABELS[s]}</th>
-            {[cluster.centroid_percent[s], v.mean, v.median, v.std, v.q1, v.q3, v.iqr].map((value, i) => <td key={i}>{num(value, 3)}</td>)}</tr>; })}</tbody>
+            {[cluster.centroid_percent[s], v.mean, v.median, v.std, v.q1, v.q3, v.iqr].map((value, i) => <td key={i}>{num(value, 2)}</td>)}</tr>; })}</tbody>
         </table></div>
-        <Note>Tâm lấy từ kết quả mô hình, trung bình tính lại từ nhãn cuối cùng. Chênh lệch lớn nhất giữa hai giá trị: {num(cluster.centroid_mean_max_gap_pp, 5)} điểm phần trăm.</Note>
+        <Note>Tâm lấy từ kết quả mô hình, trung bình tính lại từ nhãn cuối cùng. Chênh lệch lớn nhất giữa hai giá trị: {num(cluster.centroid_mean_max_gap_pp, 2)} điểm phần trăm.</Note>
       </Panel>
       <Panel title="Khoảng cách đến tâm K-Means" subtitle="Khoảng cách Euclid trên 7 tỷ trọng gốc (0–1), không phải phần trăm hoặc lượng phát thải">
         <dl className="ce-distance-grid">{[['min', 'Nhỏ nhất'], ['mean', 'Trung bình'], ['median', 'Trung vị'], ['std', 'Độ lệch chuẩn'], ['q1', 'Q1'], ['q3', 'Q3'], ['iqr', 'IQR'], ['p90', 'P90'], ['p95', 'P95'], ['max', 'Lớn nhất']].map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{num(distance[key], 4)}</dd></div>)}</dl>
@@ -108,10 +108,10 @@ export default function ClusterExplorer() {
         <div aria-live="polite">{report ? <article className="ce-report">
           <p className="ce-scope">Cụm {selected} · {reports[selected].model} · Nội dung AI cần được đối chiếu với bảng thống kê</p>
           <h3>Đặc điểm nổi bật</h3><p>{report.summary}</p>
-          <h3>So sánh với hai cụm còn lại</h3><ul>{report.comparisons.map((v, i) => <li key={i}>{v}</li>)}</ul>
+          <h3>So sánh các cụm</h3><ul>{report.comparisons.map((v, i) => <li key={i}>{v}</li>)}</ul>
           <h3>Độ phân tán và tính đại diện</h3><p>{report.dispersion_and_representativeness}</p>
-          <h3>Câu hỏi nghiên cứu tiếp theo</h3><ul>{report.research_questions.map((v, i) => <li key={i}>{v}</li>)}</ul>
-          <h3>Hạn chế của kết quả</h3><ul>{report.limitations.map((v, i) => <li key={i}>{v}</li>)}</ul>
+          <h3>Hạn chế và hướng nghiên cứu</h3><ul>{report.limitations.map((v, i) => <li key={`limit-${i}`}>{v}</li>)}</ul>
+          <ul>{report.research_questions.map((v, i) => <li key={`research-${i}`}>{v}</li>)}</ul>
         </article> : !busy && <p className="ce-scope">Chưa có báo cáo cho cụm này. Nhấn nút để gửi thống kê tới Gemini.</p>}</div>
       </Panel>
       <Panel title="Phương pháp và giới hạn dữ liệu"><div className="ce-methodology">

@@ -11,7 +11,7 @@ export function ClusterStackedChart({ clusters, filtered = false }) {
     <div className="stacked-plot"><ResponsiveContainer width="100%" height="100%">
       <BarChart data={rows} layout="vertical" margin={{ top: 8, right: 12, bottom: 2, left: 8 }} barCategoryGap={19}>
         <CartesianGrid strokeDasharray="3 6" horizontal={false} stroke="#edf1f2" />
-        <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: '#72838a' }} />
+        <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => pct(v, 0)} tick={{ fontSize: 11, fill: '#72838a' }} />
         <YAxis dataKey="cluster" type="category" tick={{ fontSize: 12, fill: '#34575c' }} width={65} axisLine={false} tickLine={false} />
         <Tooltip formatter={(v, name) => [pct(v, 2), SECTOR_LABELS[name] || name]} />
         {SECTORS.map((s, i) => <Bar key={s} dataKey={s} name={SECTOR_LABELS[s]} stackId="sectors" fill={SECTOR_COLORS[s]}
