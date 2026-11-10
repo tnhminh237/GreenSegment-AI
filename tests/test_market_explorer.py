@@ -100,10 +100,10 @@ class MarketExplorerTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             market.MarketQuery(sector="energy", min_sector_share_percent=float("nan"))
 
-    def test_parse_only_returns_reviewable_filters_and_removes_invented_thresholds(self):
+    def test_parse_returns_filters_and_flags_unverified_thresholds_for_revision(self):
         answer = {"query": self.query.model_dump(), "interpretation": "Ánh xạ công nghệ sơ bộ sang Công nghiệp.", "assumptions": [], "unsupported_criteria": []}
         with patch.object(advisor._advisor(), "call_gemini", return_value=answer) as call, \
-                patch.object(market, "search", side_effect=AssertionError("Must wait for confirmation")):
+                patch.object(market, "search", side_effect=AssertionError("Parser must not query data")):
             response = self.client.post("/api/market/parse", json={"text": "Tìm 10 đô thị Nhật Bản có Công nghiệp từ 30% trở lên"})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["query"]["min_sector_share_percent"], 30)
@@ -111,7 +111,7 @@ class MarketExplorerTests(unittest.TestCase):
             self.assertIn("Japan", call.call_args.args[0]["available_countries"])
             response = self.client.post("/api/market/parse", json={"text": "Tôi kinh doanh thu hồi nhiệt. Tìm 10 đô thị Nhật Bản."})
             self.assertIsNone(response.json()["query"]["min_sector_share_percent"])
-            self.assertTrue(response.json()["assumptions"])
+            self.assertTrue(response.json()["unsupported_criteria"])
         ranged = {**answer, "query": {**self.query.model_dump(), "min_sector_share_percent": 20, "max_sector_share_percent": 60}}
         with patch.object(advisor._advisor(), "call_gemini", return_value=ranged):
             response = self.client.post("/api/market/parse", json={"text": "Tìm đô thị Nhật Bản có tỷ trọng công nghiệp 20–60%"})

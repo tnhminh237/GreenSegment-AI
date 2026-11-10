@@ -92,7 +92,7 @@ class MarketReportDiagnosticsTests(unittest.TestCase):
             response = self.api()
             self.assertEqual(response.status_code, 200, response.text)
             self.assertEqual(transport.call_count, 1)
-            self.assertEqual(response.json()["diagnostics"]["validator_version"], "verified-facts-v2")
+            self.assertEqual(response.json()["diagnostics"]["validator_version"], "verified-facts-v5")
             self.assertIn(self.context["verified_facts"][prefix + ".sector_share_percent"]["display"], response.json()["report"]["emissions_profile"])
             self.assertNotIn("{{", response.json()["report"]["emissions_profile"])
             for secret in ["SECRET_API_KEY", "PRIVATE_BUSINESS_REQUEST", report["emissions_profile"]]:

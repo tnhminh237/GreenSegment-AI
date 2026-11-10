@@ -82,6 +82,82 @@ class MarketFactsTests(unittest.TestCase):
         self.assertEqual(caught.exception.details["fact_id"], f"cities.{first['city_id']}.rank")
         self.assertEqual(caught.exception.details["expected"], "1")
 
+    def test_city_rank_wording_matches_the_structured_city(self):
+        city = self.context["representative_cities"][1]
+        for wording in ["xếp thứ", "đứng thứ", "xếp hạng", "ở vị trí thứ", "đứng ở vị trí"]:
+            with self.subTest(wording=wording):
+                text = f"Đô thị {wording} {city['rank_in_top']} trong danh sách."
+                self.assertEqual(self.render(text, "city_comparisons.1.text", city["city_id"]), text)
+                with self.assertRaises(FactValidationError):
+                    self.render(f"Đô thị {wording} 1 trong danh sách.", "city_comparisons.1.text", city["city_id"])
+        with self.assertRaises(FactValidationError):
+            self.render("Đô thị xếp thứ {{matching.city_count}}.", "city_comparisons.1.text", city["city_id"])
+
+    def test_city_repair_template_uses_failed_city_not_list_position(self):
+        for sector in ["industry", "all"]:
+            request = self.request if sector == "industry" else market.ReportRequest(
+                query=market.MarketQuery(sector="all", countries=["Japan"], sort_by="total_ghg"))
+            context = market.report_context(request)
+            first, second = context["representative_cities"][:2]
+            raw = fixtures.MarketExplorerTests.report_fixture(context)
+            raw["city_comparisons"] = [{"city_id": second["city_id"], "text": "Cần khảo sát thêm hạ tầng."},
+                                       {"city_id": first["city_id"], "text": "Thông số chưa rõ 12345. PRIVATE_CITY_BODY"}]
+            calls = []
+            def provider(payload, *args, **kwargs):
+                calls.append(payload)
+                if "correction" not in payload:
+                    return raw
+                repair = payload["correction"]["city_repair"]
+                self.assertEqual(repair["city_id"], first["city_id"])
+                self.assertTrue(all(key.startswith(f"cities.{first['city_id']}.") for key in repair["allowed_city_fact_ids"]))
+                return {**raw, "city_comparisons": [raw["city_comparisons"][0],
+                        {"city_id": first["city_id"], "text": repair["replacement_template"]}]}
+            with self.subTest(sector=sector), patch.object(advisor._advisor(), "call_gemini", side_effect=provider):
+                response = self.client.post("/api/market/report", json=request.model_dump())
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(calls[1]["correction"]["field_path"], "city_comparisons.1.text")
+            self.assertTrue(response.json()["diagnostics"]["correction_attempted"])
+            self.assertNotIn("{{", response.json()["report"]["city_comparisons"][1]["text"])
+
+    def test_ambiguous_city_number_is_visible_without_leaking_prose(self):
+        report = fixtures.MarketExplorerTests.report_fixture(self.context)
+        report["city_comparisons"][0]["text"] = "Thông số chưa rõ 12345. PRIVATE_CITY_BODY"
+        with patch.object(advisor._advisor(), "call_gemini", return_value=report), \
+                self.assertLogs(market.REPORT_LOG.name, level="INFO") as logs:
+            response = self.client.post("/api/market/report", json=self.request.model_dump())
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()["validation"]["rule"], "ambiguous_or_unsupported_numeric_context")
+        self.assertIn("12345", response.json()["detail"])
+        self.assertNotIn("PRIVATE_CITY_BODY", response.text + "\n".join(logs.output))
+
+    def test_cluster_distribution_binds_model_cluster_count_and_numbered_labels(self):
+        for text in ["K-Means chia dữ liệu thành 3 cụm.", "Mô hình có 3 cụm K-Means.",
+                     "Mô hình có {{model.k}} cụm K-Means.",
+                     "Cụm số 1 có 22 đô thị, chiếm 55% toàn bộ tập phù hợp."]:
+            with self.subTest(text=text):
+                rendered = self.render(text, "cluster_distribution")
+                self.assertIn("55,00%" if "55%" in text else "3 cụm", rendered)
+        for text in ["K-Means chia dữ liệu thành 4 cụm.", "Cụm số 3 có 22 đô thị.",
+                     "Mô hình có {{matching.city_count}} cụm K-Means.", "Có 3 cụm khách hàng.",
+                     "Cụm số 1 có 23 đô thị.", "Top N: Cụm số 1 có 22 đô thị."]:
+            with self.subTest(text=text), self.assertRaises(FactValidationError):
+                self.render(text, "cluster_distribution")
+
+    def test_report_correction_uses_typed_cluster_facts_and_preserves_scope(self):
+        first = fixtures.MarketExplorerTests.report_fixture(self.context)
+        first["cluster_distribution"] = "Phân bố có 3 nhóm."
+        repaired = {**first, "cluster_distribution": "Trong toàn bộ tập phù hợp, Cụm {{model.cluster_ids.1}} có {{matching.clusters.1.city_count}} đô thị, chiếm {{matching.clusters.1.city_percentage}}."}
+        with patch.object(advisor._advisor(), "call_gemini", side_effect=[first, repaired]) as call:
+            response = self.client.post("/api/market/report", json=self.request.model_dump())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["report"]["cluster_distribution"],
+                         "Trong toàn bộ tập phù hợp, Cụm 1 có 22 đô thị, chiếm 55,00%.")
+        correction = call.call_args_list[1].args[0]["correction"]
+        self.assertEqual(correction["field_path"], "cluster_distribution")
+        self.assertIn("{{fact_id}}", correction["instruction"])
+        self.assertTrue(response.json()["diagnostics"]["correction_attempted"])
+
     def test_references_are_rendered_and_cannot_change_scope_or_invent_facts(self):
         text = "Toàn bộ tập phù hợp có {{matching.city_count}} đô thị; Top N có {{top.city_count}} đô thị."
         self.assertEqual(self.render(text), "Toàn bộ tập phù hợp có 40 đô thị; Top N có 10 đô thị.")
@@ -100,6 +176,24 @@ class MarketFactsTests(unittest.TestCase):
             with self.subTest(text=text), self.assertRaises(FactValidationError):
                 self.render(text)
         self.assertEqual(self.render("Không chuyển đơn vị sang tCO₂e."), "Không chuyển đơn vị sang tCO₂e.")
+
+    def test_b2b_term_is_not_a_numeric_claim(self):
+        for term in ("B2B", "b2b"):
+            text = "Nghiên cứu thị trường công nghệ xanh " + term + "."
+            self.assertEqual(self.render(text), text)
+        for text in ("B2B2024", "PRIVATE2B", "B2B có 999999 khách hàng.", "B2B: 1e6 khách hàng."):
+            with self.subTest(text=text), self.assertRaises(FactValidationError):
+                self.render(text)
+
+    def test_api_accepts_b2b_research_request_without_correction(self):
+        report = fixtures.MarketExplorerTests.report_fixture(self.context)
+        report["research_request"] = "Nghiên cứu thị trường B2B. Tập phù hợp có {{matching.city_count}} đô thị."
+        with patch.object(advisor._advisor(), "call_gemini", return_value=report) as call:
+            response = self.client.post("/api/market/report", json=self.request.model_dump())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(call.call_count, 1)
+        self.assertEqual(response.json()["report"]["research_request"],
+                         "Nghiên cứu thị trường B2B. Tập phù hợp có 40 đô thị.")
 
     def test_valid_city_cluster_then_sector_share_is_not_a_cluster_population_rate(self):
         city = self.context["representative_cities"][0]

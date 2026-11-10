@@ -61,6 +61,8 @@ async def market_report(request: market.ReportRequest):
                 body["detail"] += f" Trường: {path}. Lý do: {exc.validation.get('rule', 'invalid_content')}."
                 if "observed" in exc.validation and "expected" in exc.validation:
                     body["detail"] += f" Nhận: {exc.validation['observed']}; Python: {exc.validation['expected']}."
+                elif "observed" in exc.validation:
+                    body["detail"] += f" Số chưa gắn được với dữ liệu Python: {exc.validation['observed']}."
         return JSONResponse(status_code=exc.status, content=body, headers={"X-Request-ID": exc.request_id})
 
 

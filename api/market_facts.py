@@ -3,7 +3,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import re
 import unicodedata
 
-VALIDATOR_VERSION = "verified-facts-v2"
+VALIDATOR_VERSION = "verified-facts-v5"
 
 
 class FactValidationError(ValueError):
@@ -44,8 +44,9 @@ def build_verified_facts(result: dict) -> dict:
     for scope, summary in (("matching", result["matching_summary"]), ("top", result["top_summary"])):
         for field in ("city_count", "country_count"):
             add(f"{scope}.{field}", summary[field], "count", scope, source + f":{scope}.{field}")
-        add(f"{scope}.mean_sector_share_percent", summary["mean_sector_share_percent"], "percentage", scope,
-            source + f":mean(share_{result['query']['sector']}_2024*100),{scope}")
+        if summary["mean_sector_share_percent"] is not None:
+            add(f"{scope}.mean_sector_share_percent", summary["mean_sector_share_percent"], "percentage", scope,
+                source + f":mean(share_{result['query']['sector']}_2024*100),{scope}")
         for cid, count in summary["cluster_counts"].items():
             add(f"{scope}.clusters.{cid}.city_count", count, "count", scope, source + f":{scope},cluster_id={cid}")
             add(f"{scope}.clusters.{cid}.city_percentage", count * 100 / summary["city_count"], "percentage", scope,
@@ -59,14 +60,16 @@ def build_verified_facts(result: dict) -> dict:
         origin = source + ":city_id=" + city["city_id"]
         for field, kind in (("sector_share_percent", "percentage"), ("sector_emissions", "ghg"),
                             ("ghg_total_2024", "ghg"), ("cluster_id", "cluster_id")):
-            add(f"{prefix}.{field}", city[field], kind, "city", origin + ":" + field)
+            if city[field] is not None:
+                add(f"{prefix}.{field}", city[field], kind, "city", origin + ":" + field)
         add(f"{prefix}.rank", i + 1, "rank", "city", origin + ":rank_in_confirmed_sort")
         for scope, summary in (("matching", result["matching_summary"]), ("top", result["top_summary"])):
-            add(f"{prefix}.share_gap_{scope}_pp", city["sector_share_percent"] - summary["mean_sector_share_percent"],
-                "percentage_points", scope, origin + f":share-minus-{scope}-mean")
+            if city["sector_share_percent"] is not None:
+                add(f"{prefix}.share_gap_{scope}_pp", city["sector_share_percent"] - summary["mean_sector_share_percent"],
+                    "percentage_points", scope, origin + f":share-minus-{scope}-mean")
     for a in representatives:
         for b in representatives:
-            if a["city_id"] != b["city_id"]:
+            if a["city_id"] != b["city_id"] and a["sector_share_percent"] is not None:
                 add(f"comparisons.{a['city_id']}.{b['city_id']}.share_gap_pp", a["sector_share_percent"] - b["sector_share_percent"],
                     "percentage_points", "comparison", source + f":share({a['city_id']})-share({b['city_id']})")
     return facts
@@ -75,6 +78,7 @@ def build_verified_facts(result: dict) -> dict:
 # Accept VI and international separators, including nonbreaking thousands spaces.
 _TOKEN = r"(?<![\w.,])[-+−]?(?:\d{1,3}(?:[.\u00a0\u202f ]\d{3})+(?:,\d+)?|\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:[.,]\d+)?)(?!\w|[.,]\d)"
 _REFERENCE = r"\{\{([^{}]{1,160})\}\}"
+_RANK_PREFIX = r"\b(?:thu hang|xep hang|dung thu|xep thu|hang|rank|vi tri(?: thu)?)\s*[:=]?\s*$"
 
 
 def _reference_key(value, facts):
@@ -113,6 +117,12 @@ def _scope(prefix, path):
     return max(markers)[1] if markers else scope
 
 
+def _model_cluster_count(prefix, suffix):
+    return re.match(r"\s*cum\b", suffix) and (
+        re.search(r"\bk[- ]means\b|\bmo hinh\b|\bphan cum\b", prefix)
+        or re.match(r"\s*cum\s+k[- ]means\b", suffix))
+
+
 def _fact_in_context(text, start, end, path, city_id, context, hint=None):
     prior = re.sub(_REFERENCE, lambda m: context["verified_facts"].get(_reference_key(m[1], context["verified_facts"]), {}).get("display", ""), text[:start])
     prefix = _ascii(re.split(r"[!?;\n]|\.(?=\s|$)", prior)[-1])
@@ -126,15 +136,15 @@ def _fact_in_context(text, start, end, path, city_id, context, hint=None):
         city_id = max(names)[1]
     if re.search(r"(?:\bnam|\byear)\s*$", prefix):
         return "dataset.year"
-    if re.search(r"\bk\s*=\s*$", prefix):
+    if re.search(r"\bk\s*=\s*$", prefix) or _model_cluster_count(prefix, suffix):
         return "model.k"
-    if re.search(r"\bcum\s*$", prefix):
+    if re.search(r"\bcum(?:\s+so)?\s*$", prefix):
         return "@cluster_id" if city_id is None else f"cities.{city_id}.cluster_id"
-    if re.search(r"(?:thu hang|dung thu|\bhang|\brank)\s*$", prefix):
+    if re.search(_RANK_PREFIX, prefix):
         return f"cities.{city_id}.rank" if city_id else None
     if re.search(r"\btop\s*$", prefix):
         return "top.limit" if re.search(r"gioi han|toi da|yeu cau", prefix) else "top.city_count"
-    clusters = re.findall(r"\bcum\s+([012])\b", prefix)
+    clusters = re.findall(r"\bcum\s+(?:so\s+)?([012])\b", prefix)
     if city_id and re.search(r"ghg|luong phat thai", prefix) and not re.search(r"ty trong|ti trong|trung binh|chenh lech", prefix):
         return f"cities.{city_id}.ghg_total_2024" if re.search(r"tong ghg|tong phat thai", prefix) else f"cities.{city_id}.sector_emissions"
     is_percent = re.match(r"\s*(?:%|phan\s+tram)", suffix) or (hint or {}).get("kind") == "percentage" or re.search(r"trung binh|\bmean\b", prefix)
@@ -150,7 +160,7 @@ def _fact_in_context(text, start, end, path, city_id, context, hint=None):
             return "filters.max_sector_share_percent" if "filters.max_sector_share_percent" in facts else None
         # A city's sector share is not the percentage of cities in its cluster.
         # Recognize a new local share predicate after the preceding cluster label.
-        last_cluster = list(re.finditer(r"\bcum\s+[012]\b", prefix))
+        last_cluster = list(re.finditer(r"\bcum\s+(?:so\s+)?[012]\b", prefix))
         local = prefix[last_cluster[-1].end():] if last_cluster else prefix
         if city_id and re.search(r"ty trong|ti trong", local) and not re.search(r"trung binh|mean", local):
             return f"cities.{city_id}.sector_share_percent"
@@ -209,18 +219,18 @@ def _check_reference(text, start, end, path, city_id, context, key):
             expected = key.replace(fact["scope"] + ".", scope + ".", 1)
     if re.search(r"(?:\bnam|\byear)\s*[:=]?\s*$", prefix):
         expected = "dataset.year"
-    elif re.search(r"\bk\s*=\s*$", prefix):
+    elif re.search(r"\bk\s*=\s*$", prefix) or _model_cluster_count(prefix, _ascii(text[end:end + 75])):
         expected = "model.k"
-    elif re.search(r"\bcum\s*$", prefix):
+    elif re.search(r"\bcum(?:\s+so)?\s*$", prefix):
         if fact["kind"] != "cluster_id":
             _fail(path, "wrong_fact_kind", key, fact)
-        if active_city and (named or re.search(r"thuoc\s+cum\s*$", prefix)):
+        if active_city and (named or re.search(r"thuoc\s+cum(?:\s+so)?\s*$", prefix)):
             target = f"cities.{active_city}.cluster_id"
             if fact["value"] != facts[target]["value"]:
                 expected = target
     elif re.search(r"trung binh\s*$", prefix):
         expected = f"{scope or (fact['scope'] if fact['scope'] in {'matching', 'top'} else 'matching')}.mean_sector_share_percent"
-    elif re.search(r"(?:thu hang|dung thu|\bhang|\brank)\s*$", prefix) and active_city:
+    elif re.search(_RANK_PREFIX, prefix) and active_city:
         expected = f"cities.{active_city}.rank"
     if expected in facts and expected != key:
         target = facts[expected]
@@ -265,6 +275,9 @@ def render_verified_text(text: str, path: str, context: dict, city_id=None) -> t
         if re.search(r"\d", city["city_name"]):
             covered.extend((m.start(), m.end()) for m in re.finditer(re.escape(city["city_name"]), text, re.I))
     covered.extend((m.start(), m.end()) for m in re.finditer(r"\b(?:t?CO[2₂]e?|CH[4₄]|N[2₂]O)\b", text, re.I))
+    # B2B is the business-model term used in REPORT_RULES, not a numeric claim.
+    # Match the complete term so embedded digits in other identifiers still fail.
+    covered.extend((m.start(), m.end()) for m in re.finditer(r"\bB2B\b", text, re.I))
     # "Cụm 0, 1 và 2" is a list of labels, not the decimal 0.1 or a city count.
     for group in re.finditer(r"\b(?:các\s+)?(?:cụm|cum|clusters?)\s+(\d+(?:\s*(?:,|/|và)\s*\d+)+)\b(?!\s*%)", text, re.I):
         for label in re.finditer(r"\d+", group[1]):
